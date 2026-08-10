@@ -14,9 +14,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
@@ -25,27 +24,27 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "refresh_token")
-public class RefreshToken {
+@Table(name = "booking_item")
+public class BookingItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "booking_id", nullable = false)
+    private Booking booking;
 
-    @Column(name = "token_hash", nullable = false)
-    private String tokenHash;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id", nullable = false)
+    private Service service;
+
+    @Column(name = "service_name", nullable = false)
+    private String serviceName;
+
+    @Column(name = "price_snapshot", nullable = false, precision = 10, scale = 2)
+    private BigDecimal priceSnapshot;
 
     @Column(nullable = false)
-    private boolean revoked;
-
-    @Column(name = "expired_at", nullable = false)
-    private LocalDateTime expiredAt;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    private int duration;
 }

@@ -1,7 +1,11 @@
 package demo.booking.hairsalon.model.entity;
 
+import demo.booking.hairsalon.model.enums.NotificationReferenceType;
+import demo.booking.hairsalon.model.enums.NotificationType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,8 +29,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "refresh_token")
-public class RefreshToken {
+@Table(name = "notification")
+public class Notification {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -36,14 +40,25 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "token_hash", nullable = false)
-    private String tokenHash;
-
     @Column(nullable = false)
-    private boolean revoked;
+    private String title;
 
-    @Column(name = "expired_at", nullable = false)
-    private LocalDateTime expiredAt;
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private NotificationType type;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reference_type")
+    private NotificationReferenceType referenceType;
+
+    @Column(name = "reference_id")
+    private UUID referenceId;
+
+    @Column(name = "is_read", nullable = false)
+    private boolean isRead;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

@@ -38,7 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
-    private final PasswordResetTokenService passwordResetTokenService;
+    private final OtpService otpService;
     private final GoogleAuthService googleAuthService;
 
 
@@ -52,23 +52,25 @@ public class AuthServiceImpl implements AuthService {
         user.setFirstName(request.firstName());
         user.setLastName(request.lastName());
         user.setEmail(request.email());
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
         user.setRole(Role.CUSTOMER);
-        user.setEnabled(false);
+        user.setActive(false);
+        user.setEmailVerified(false);
+        user.setAuthProvider(demo.booking.hairsalon.model.enums.AuthProvider.LOCAL);
         userRepository.save(user);
-        EmailVerificationToken token = verificationTokenService.create(user);
-        emailService.sendVerificationEmail(user.getEmail(), token.getToken());
+        demo.booking.hairsalon.model.entity.Otp token = otpService.create(user, demo.booking.hairsalon.model.enums.OtpType.VERIFY_EMAIL);
+        emailService.sendVerificationEmail(user.getEmail(), token.getOtpCode());
     }
 
     @Transactional
     @Override
     public void verifyEmail(String tokenValue) {
-        EmailVerificationToken token = verificationTokenService.getByToken(tokenValue);
-        verificationTokenService.validate(token);
+        demo.booking.hairsalon.model.entity.Otp token = otpService.validate(tokenValue, demo.booking.hairsalon.model.enums.OtpType.VERIFY_EMAIL);
         User user = token.getUser();
-        user.setEnabled(true);
+        user.setActive(true);
+        user.setEmailVerified(true);
         userRepository.save(user);
-        verificationTokenService.delete(token);
+        otpService.markAsUsed(token);
     }
 
     @Override
@@ -78,7 +80,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userDetails.getUser();
         String accessToken = jwtService.generateAccessToken(user);
         RefreshToken refreshToken = refreshTokenService.create(user);
-        return new LoginResponse(accessToken, refreshToken.getToken());
+        return new LoginResponse(accessToken, refreshToken.getTokenHash());
     }
 
     @Override
@@ -91,7 +93,7 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = jwtService.generateAccessToken(user);
         RefreshToken newRefreshToken = refreshTokenService.create(user);
 
-        return new TokenResponse(newAccessToken, newRefreshToken.getToken());
+        return new TokenResponse(newAccessToken, newRefreshToken.getTokenHash());
     }
 
     @Override
@@ -106,10 +108,10 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByEmail(request.email()).ifPresent(user -> {
-            PasswordResetToken token = passwordResetTokenService.create(user);
+            demo.booking.hairsalon.model.entity.Otp token = otpService.create(user, demo.booking.hairsalon.model.enums.OtpType.RESET_PASSWORD);
                     emailService.sendPasswordResetEmail(
                             user.getEmail(),
-                            token.getToken()
+                            token.getOtpCode()
                    );
                 });
     }
@@ -117,14 +119,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken token = passwordResetTokenService.validate(request.token());
+        demo.booking.hairsalon.model.entity.Otp token = otpService.validate(request.token(), demo.booking.hairsalon.model.enums.OtpType.RESET_PASSWORD);
         User user = token.getUser();
-        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
-        passwordResetTokenService.delete(token);
+        otpService.markAsUsed(token);
     }
 
     @Override
@@ -132,13 +134,13 @@ public class AuthServiceImpl implements AuthService {
     public void changePassword(ChangePasswordRequest request) {
         CustomUserDetails currentUser = SecurityUtils.getCurrentUser();
         User user = currentUser.getUser();
-        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.WRONG_CURRENT_PASSWORD);
         }
-        if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+        if (passwordEncoder.matches(request.newPassword(), user.getPasswordHash())) {
             throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }
-        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
         refreshTokenService.revokeAll(user);
     }
@@ -147,13 +149,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public void resendVerificationEmail(ResendVerificationRequest request) {
         userRepository.findByEmail(request.email()).ifPresent(user -> {
-            if (user.isEnabled()) {
+            if (user.isActive() && user.isEmailVerified()) {
                 throw new BusinessException(ErrorCode.EMAIL_ALREADY_VERIFIED);
             }
-            verificationTokenService.deleteByUser(user);
-            EmailVerificationToken token = verificationTokenService.create(user);
+            demo.booking.hairsalon.model.entity.Otp token = otpService.create(user, demo.booking.hairsalon.model.enums.OtpType.VERIFY_EMAIL);
 
-            emailService.sendVerificationEmail(user.getEmail(), token.getToken());});
+            emailService.sendVerificationEmail(user.getEmail(), token.getOtpCode());});
     }
 
     public LoginResponse googleLogin(GoogleLoginRequest request) {
@@ -162,8 +163,9 @@ public class AuthServiceImpl implements AuthService {
 
         User user = userRepository.findByEmail(googleUser.email()).orElseGet(() -> createGoogleUser(googleUser));
 
-        if (!user.isEnabled()) {
-            user.setEnabled(true);
+        if (!user.isActive()) {
+            user.setActive(true);
+            user.setEmailVerified(true);
             userRepository.save(user);
         }
 
@@ -179,8 +181,10 @@ public class AuthServiceImpl implements AuthService {
         user.setEmail(googleUser.email());
         user.setFirstName(googleUser.firstName());
         user.setLastName(googleUser.lastName());
-        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-        user.setEnabled(true);
+        user.setPasswordHash(passwordEncoder.encode(UUID.randomUUID().toString()));
+        user.setActive(true);
+        user.setEmailVerified(true);
+        user.setAuthProvider(demo.booking.hairsalon.model.enums.AuthProvider.GOOGLE);
         user.setRole(Role.CUSTOMER);
         return userRepository.save(user);
     }

@@ -1,7 +1,10 @@
 package demo.booking.hairsalon.model.entity;
 
+import demo.booking.hairsalon.model.enums.OtpType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,8 +28,8 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "refresh_token")
-public class RefreshToken {
+@Table(name = "otp")
+public class Otp {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -36,14 +39,18 @@ public class RefreshToken {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "token_hash", nullable = false)
-    private String tokenHash;
+    @Column(name = "otp_code", nullable = false, length = 10)
+    private String otpCode;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private boolean revoked;
+    private OtpType type;
 
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
+
+    @Column(name = "is_used", nullable = false)
+    private boolean isUsed;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)

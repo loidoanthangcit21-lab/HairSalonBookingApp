@@ -11,5 +11,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
+    
+    org.springframework.data.domain.Page<User> findByRole(demo.booking.hairsalon.model.enums.Role role, org.springframework.data.domain.Pageable pageable);
 
 }

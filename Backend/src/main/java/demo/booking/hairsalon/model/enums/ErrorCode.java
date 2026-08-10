@@ -19,7 +19,12 @@ public enum ErrorCode {
     PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "Password reset token has expired"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Google ID token"),
-    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required");
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required"),
+    INVALID_OTP(HttpStatus.BAD_REQUEST, "Invalid or expired OTP"),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "Category not found"),
+    CATEGORY_NAME_IS_EXISTED(HttpStatus.BAD_REQUEST, "Category name already exists"),
+    SERVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "Service not found"),
+    SERVICE_NAME_IS_EXISTED(HttpStatus.BAD_REQUEST, "Service name already exists");
 
     private final HttpStatus status;
     private final String message;

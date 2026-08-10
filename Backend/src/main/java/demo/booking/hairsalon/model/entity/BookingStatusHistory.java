@@ -1,7 +1,10 @@
 package demo.booking.hairsalon.model.entity;
 
+import demo.booking.hairsalon.model.enums.BookingStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -25,27 +28,36 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Entity
-@Table(name = "refresh_token")
-public class RefreshToken {
+@Table(name = "booking_status_history")
+public class BookingStatusHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "booking_id", nullable = false)
+    private Booking booking;
 
-    @Column(name = "token_hash", nullable = false)
-    private String tokenHash;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "old_status")
+    private BookingStatus oldStatus;
 
-    @Column(nullable = false)
-    private boolean revoked;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "new_status", nullable = false)
+    private BookingStatus newStatus;
 
-    @Column(name = "expired_at", nullable = false)
-    private LocalDateTime expiredAt;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "changed_by")
+    private User changedBy;
+
+    @Column(length = 500)
+    private String description;
+
+    @Column(length = 255)
+    private String note;
 
     @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "changed_at", nullable = false, updatable = false)
+    private LocalDateTime changedAt;
 }

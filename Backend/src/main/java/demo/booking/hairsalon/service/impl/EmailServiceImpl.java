@@ -16,7 +16,6 @@ public class EmailServiceImpl implements EmailService {
 
     @Override
     public void sendVerificationEmail(String to, String token) {
-        String link = "http://localhost:8081/api/auth/verify-email?token=" + token;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject("Verify your email");
@@ -27,14 +26,13 @@ public class EmailServiceImpl implements EmailService {
                 Please verify your email:
                                 
                 %s
-                """.formatted(link)
+                """.formatted(token)
         );
         mailSender.send(message);
     }
 
     @Override
     public void sendPasswordResetEmail(String to, String token) {
-        String link = "http://localhost:8081/api/auth/reset-password?token=" + token;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(to);
         message.setSubject("Reset your password");
@@ -42,12 +40,10 @@ public class EmailServiceImpl implements EmailService {
                 """
                 We received a request to reset your password.
     
-                Click the link below:
-    
-                %s
+                your OTP is : %s
     
                 If you did not request this, please ignore this email.
-                """.formatted(link)
+                """.formatted(token)
         );
         mailSender.send(message);
     }

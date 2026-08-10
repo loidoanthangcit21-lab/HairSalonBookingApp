@@ -28,9 +28,9 @@ public class RefreshTokenServiceImpl
     public RefreshToken create(User user) {
         String jwtRefreshToken = jwtService.generateRefreshToken(user);
         RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setToken(jwtRefreshToken);
+        refreshToken.setTokenHash(jwtRefreshToken);
         refreshToken.setUser(user);
-        refreshToken.setExpiresAt(LocalDateTime.now().plusSeconds(jwtProperties.getRefreshExpiration() / 1000));
+        refreshToken.setExpiredAt(LocalDateTime.now().plusSeconds(jwtProperties.getRefreshExpiration() / 1000));
         refreshToken.setRevoked(false);
         return repository.save(refreshToken);
     }
@@ -38,7 +38,7 @@ public class RefreshTokenServiceImpl
     @Override
     public RefreshToken getByToken(String token) {
 
-        return repository.findByToken(token).orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
+        return repository.findByTokenHash(token).orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
     }
 
     @Override
@@ -54,7 +54,7 @@ public class RefreshTokenServiceImpl
         if (refreshToken.isRevoked()) {
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_REVOKED);
         }
-        if (jwtService.isTokenExpired(refreshToken.getToken())) {
+        if (jwtService.isTokenExpired(refreshToken.getTokenHash())) {
             throw new BusinessException(ErrorCode.REFRESH_TOKEN_EXPIRED);
         }
         return refreshToken;
