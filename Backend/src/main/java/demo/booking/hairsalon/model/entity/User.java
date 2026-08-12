@@ -31,6 +31,13 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "role")
     private Role role;
+    
+    @Column(name = "phone_number")
+    private String phoneNumber;
+    
+    @Column(name = "avatar_url")
+    private String avatarUrl;
+
     private boolean enabled;
     @CreationTimestamp
     private LocalDateTime createdAt;

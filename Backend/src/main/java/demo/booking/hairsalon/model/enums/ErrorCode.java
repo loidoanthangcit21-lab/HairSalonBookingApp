@@ -19,7 +19,13 @@ public enum ErrorCode {
     PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "Password reset token has expired"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Google ID token"),
-    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required");
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required"),
+    SERVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "Service not found"),
+    STYLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "Stylist not found"),
+    BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "Booking not found"),
+    INVALID_BOOKING_TIME(HttpStatus.BAD_REQUEST, "Invalid booking time"),
+    STYLIST_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "Stylist is not available at this time"),
+    UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
 
     private final HttpStatus status;
     private final String message;
