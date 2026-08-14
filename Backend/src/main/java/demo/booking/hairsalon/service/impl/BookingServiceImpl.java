@@ -123,37 +123,55 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
                     .orElseThrow(() -> new BusinessException(ErrorCode.STYLIST_NOT_FOUND));
         }
 
+        int totalDuration = 0;
+        double totalAmount = 0.0;
+        List<SalonService> selectedServices = new ArrayList<>();
+
+        for (UUID serviceId : request.serviceIds()) {
+            SalonService service = salonServiceRepository.findById(serviceId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
+            selectedServices.add(service);
+            totalDuration += service.getDuration();
+            totalAmount += service.getPrice();
+        }
+
+        LocalTime endTime = request.startTime().plusMinutes(totalDuration);
+
+        if (stylist != null) {
+            List<BookingStatus> activeStatuses = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
+            long overlaps = bookingRepository.countOverlappingBookings(
+                    stylist.getId(),
+                    request.appointmentDate(),
+                    request.startTime(),
+                    endTime,
+                    activeStatuses
+            );
+            if (overlaps > 0) {
+                throw new BusinessException(ErrorCode.STYLIST_NOT_AVAILABLE);
+            }
+        }
+
         Booking booking = new Booking();
         booking.setCustomer(customer);
         booking.setStylist(stylist);
         booking.setAppointmentDate(request.appointmentDate());
         booking.setStartTime(request.startTime());
+        booking.setEndTime(endTime);
         booking.setStatus(BookingStatus.PENDING);
         booking.setPaymentStatus(PaymentStatus.UNPAID);
         booking.setNotes(request.notes());
-
-        int totalDuration = 0;
-        double totalAmount = 0.0;
-        List<demo.booking.hairsalon.model.entity.BookingService> bookingServices = new ArrayList<>();
-
-        for (UUID serviceId : request.serviceIds()) {
-            SalonService service = salonServiceRepository.findById(serviceId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
-            
-            demo.booking.hairsalon.model.entity.BookingService bs = new demo.booking.hairsalon.model.entity.BookingService();
-            bs.setBooking(booking);
-            bs.setService(service);
-            bs.setPriceAtBooking(service.getPrice());
-            bookingServices.add(bs);
-
-            totalDuration += service.getDuration();
-            totalAmount += service.getPrice();
-        }
-
-        booking.setEndTime(request.startTime().plusMinutes(totalDuration));
         booking.setTotalAmount(totalAmount);
 
         Booking savedBooking = bookingRepository.save(booking);
+
+        List<demo.booking.hairsalon.model.entity.BookingService> bookingServices = new ArrayList<>();
+        for (SalonService service : selectedServices) {
+            demo.booking.hairsalon.model.entity.BookingService bs = new demo.booking.hairsalon.model.entity.BookingService();
+            bs.setBooking(savedBooking);
+            bs.setService(service);
+            bs.setPriceAtBooking(service.getPrice());
+            bookingServices.add(bs);
+        }
         bookingServiceRepository.saveAll(bookingServices);
 
         return mapToResponse(savedBooking);
