@@ -27,7 +27,8 @@ public class PasswordResetTokenServiceImpl
         repository.deleteAllByUser(user);
         PasswordResetToken token = new PasswordResetToken();
         token.setUser(user);
-        token.setToken(UUID.randomUUID().toString());
+        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        token.setToken(otp);
         token.setExpiresAt(LocalDateTime.now().plusSeconds(tokenProperties.getPasswordResetExpiration() / 1000));
         return repository.save(token);
     }
@@ -41,6 +42,12 @@ public class PasswordResetTokenServiceImpl
             throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_EXPIRED);
         }
         return token;
+    }
+
+    @Override
+    public PasswordResetToken getByUser(User user) {
+        return repository.findByUser(user).orElseThrow(() ->
+                new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_NOT_FOUND));
     }
 
     @Override

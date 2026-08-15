@@ -1,14 +1,21 @@
 package demo.booking.hairsalon.model.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record ResetPasswordRequest(
 
-        @NotBlank(message = "Token is required")
-        String token,
+        @Email(message = "Invalid email")
+        @NotBlank(message = "Email is required")
+        String email,
 
-        @Size(min = 8, message = "Password must be at least 8 characters")
+        @NotBlank(message = "OTP is required")
+        @Size(min = 6, max = 6, message = "OTP must be exactly 6 digits")
+        String otp,
+
+        @NotBlank(message = "New password is required")
+        @Size(min = 8, max = 100, message = "Password must be at least 8 characters")
         String newPassword
 
 ) {

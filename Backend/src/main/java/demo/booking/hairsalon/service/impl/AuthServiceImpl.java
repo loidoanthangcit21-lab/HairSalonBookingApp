@@ -62,10 +62,16 @@ public class AuthServiceImpl implements AuthService {
 
     @Transactional
     @Override
-    public void verifyEmail(String tokenValue) {
-        EmailVerificationToken token = verificationTokenService.getByToken(tokenValue);
+    public void verifyEmail(VerifyEmailRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        EmailVerificationToken token = verificationTokenService.getByUser(user);
+        
+        if (!token.getToken().equals(request.otp())) {
+            throw new BusinessException(ErrorCode.INVALID_VERIFICATION_TOKEN);
+        }
+        
         verificationTokenService.validate(token);
-        User user = token.getUser();
         user.setEnabled(true);
         userRepository.save(user);
         verificationTokenService.delete(token);
@@ -117,8 +123,16 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken token = passwordResetTokenService.validate(request.token());
-        User user = token.getUser();
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        PasswordResetToken token = passwordResetTokenService.getByUser(user);
+        
+        if (!token.getToken().equals(request.otp())) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_NOT_FOUND); // Using existing error code
+        }
+        
+        passwordResetTokenService.validate(token.getToken());
+        
         if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }

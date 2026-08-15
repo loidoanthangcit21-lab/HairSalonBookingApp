@@ -63,7 +63,8 @@ public class SecurityConfig {
                                 "/api/auth/reset-password",
                                 "/api/auth/refresh",
                                 "/api/auth/resend-verification",
-                                "/api/auth/google"
+                                "/api/auth/google",
+                                "/ws/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -79,7 +80,7 @@ public class SecurityConfig {
 
         CorsConfiguration configuration = new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of("http://localhost:3000"));
+        configuration.setAllowedOriginPatterns(List.of("*"));
 
         configuration.setAllowedMethods(
                 List.of(

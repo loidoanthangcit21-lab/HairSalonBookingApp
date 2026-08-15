@@ -9,7 +9,7 @@ public interface AuthService {
 
     void register(RegisterRequest request);
 
-    void verifyEmail(String token);
+    void verifyEmail(demo.booking.hairsalon.model.dto.request.VerifyEmailRequest request);
 
     LoginResponse login(LoginRequest request);
 

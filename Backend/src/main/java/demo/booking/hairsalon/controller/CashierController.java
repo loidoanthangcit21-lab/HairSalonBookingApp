@@ -10,13 +10,12 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/receptionist")
-@PreAuthorize("hasRole('RECEPTIONIST')")
-public class ReceptionistController {
+@RequestMapping("/api/cashier")
+@PreAuthorize("hasRole('CASHIER')")
+public class CashierController {
 
     private final BookingService bookingService;
 
@@ -27,6 +26,6 @@ public class ReceptionistController {
 
     @PostMapping("/bookings")
     public ApiResponse<BookingResponse> createBookingForCustomer(@Valid @RequestBody BookingRequest request) {
-        return ApiResponse.success(bookingService.receptionistCreateBooking(request), "Booking created successfully", null);
+        return ApiResponse.success(bookingService.cashierCreateBooking(request), "Booking created successfully", null);
     }
 }

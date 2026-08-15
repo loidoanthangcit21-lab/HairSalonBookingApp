@@ -44,19 +44,19 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         log.info("Initializing mock data...");
 
-        // 1. Initialize Users (Receptionist & Stylists)
+        // 1. Initialize Users (Cashier & Stylists)
         if (userRepository.count() == 0) {
             log.info("Creating initial users...");
 
-            // Create Receptionist
-            User receptionist = new User();
-            receptionist.setFirstName("Le");
-            receptionist.setLastName("Tan");
-            receptionist.setEmail("receptionist@example.com");
-            receptionist.setPassword(passwordEncoder.encode("password123"));
-            receptionist.setRole(Role.RECEPTIONIST);
-            receptionist.setEnabled(true);
-            userRepository.save(receptionist);
+            // Create Cashier
+            User cashier = new User();
+            cashier.setFirstName("Thu");
+            cashier.setLastName("Ngan");
+            cashier.setEmail("cashier@example.com");
+            cashier.setPassword(passwordEncoder.encode("password123"));
+            cashier.setRole(Role.CASHIER);
+            cashier.setEnabled(true);
+            userRepository.save(cashier);
 
             // Create Stylist 1
             User stylist1 = new User();
@@ -237,7 +237,7 @@ public class DataInitializer implements CommandLineRunner {
                     b2.setPaymentStatus(PaymentStatus.UNPAID);
                     b2.setTotalAmount(s1.getPrice() + (s2 != null ? s2.getPrice() : 0));
                     b2.setCreatedByStaff(true);
-                    b2.setNotes("Lễ tân đặt hộ (Walk-in)");
+                    b2.setNotes("Thu ngân đặt hộ (Walk-in)");
                     b2.setBookingCode("BK-1002");
                     b2.setCustomerName(customer2.getFirstName() + " " + customer2.getLastName());
                     b2.setCustomerPhone("0987654321");

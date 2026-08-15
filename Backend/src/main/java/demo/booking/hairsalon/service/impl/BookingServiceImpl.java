@@ -37,6 +37,7 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     private final UserRepository userRepository;
     private final SalonServiceRepository salonServiceRepository;
     private final BookingServiceRepository bookingServiceRepository;
+    private final demo.booking.hairsalon.service.NotificationService notificationService;
 
     @Override
     @Transactional
@@ -151,6 +152,15 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
         }
         booking.setStatus(BookingStatus.CANCELLED);
         bookingRepository.save(booking);
+
+        // Notify Cashiers
+        List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
+        for (User cashier : cashiers) {
+            notificationService.sendNotification(cashier, "Booking Cancelled", "Booking " + booking.getBookingCode() + " has been cancelled.", "booking");
+        }
+        if (booking.getStylist() != null) {
+            notificationService.sendNotification(booking.getStylist(), "Booking Cancelled", "Booking " + booking.getBookingCode() + " has been cancelled.", "booking");
+        }
     }
 
     @Override
@@ -167,7 +177,7 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
 
     @Override
     @Transactional
-    public BookingResponse receptionistCreateBooking(BookingRequest request) {
+    public BookingResponse cashierCreateBooking(BookingRequest request) {
         return processBookingCreation(null, request, true);
     }
 
@@ -196,6 +206,20 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
         booking.setStatus(newStatus);
         bookingRepository.save(booking);
+
+        if (newStatus == BookingStatus.CONFIRMED) {
+            if (booking.getCustomer() != null) {
+                notificationService.sendNotification(booking.getCustomer(), "Booking Confirmed", "Your booking " + booking.getBookingCode() + " is confirmed.", "booking");
+            }
+            if (booking.getStylist() != null) {
+                notificationService.sendNotification(booking.getStylist(), "New Job", "You have a new confirmed booking " + booking.getBookingCode(), "booking");
+            }
+        } else if (newStatus == BookingStatus.COMPLETED) {
+            List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
+            for (User cashier : cashiers) {
+                notificationService.sendNotification(cashier, "Job Completed", "Booking " + booking.getBookingCode() + " is completed. Ready for payment.", "booking");
+            }
+        }
     }
 
     private BookingResponse processBookingCreation(User customer, BookingRequest request, boolean isStaff) {
@@ -271,6 +295,22 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
             bookingServices.add(bs);
         }
         bookingServiceRepository.saveAll(bookingServices);
+
+        if (!isStaff) {
+            // Notify Cashiers of new online booking
+            List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
+            for (User cashier : cashiers) {
+                notificationService.sendNotification(cashier, "New Booking Request", "New online booking received: " + savedBooking.getBookingCode(), "booking");
+            }
+        } else {
+            // Staff created, notify stylist and customer
+            if (stylist != null) {
+                notificationService.sendNotification(stylist, "New Job", "You have a new booking " + savedBooking.getBookingCode(), "booking");
+            }
+            if (customer != null) {
+                notificationService.sendNotification(customer, "Booking Created", "Your booking " + savedBooking.getBookingCode() + " has been created by our staff.", "booking");
+            }
+        }
 
         return mapToResponse(savedBooking);
     }

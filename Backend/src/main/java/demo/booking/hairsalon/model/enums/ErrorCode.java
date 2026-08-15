@@ -25,6 +25,7 @@ public enum ErrorCode {
     BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "Booking not found"),
     INVALID_BOOKING_TIME(HttpStatus.BAD_REQUEST, "Invalid booking time"),
     STYLIST_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "Stylist is not available at this time"),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found"),
     UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
 
     private final HttpStatus status;

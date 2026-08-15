@@ -19,7 +19,7 @@ public interface BookingService {
     // Receptionist
     List<BookingResponse> getTodayBookings();
     List<BookingResponse> getStaffCreatedBookings();
-    BookingResponse receptionistCreateBooking(BookingRequest request);
+    BookingResponse cashierCreateBooking(BookingRequest request);
     void markAsPaid(UUID bookingId);
 
     // Stylist (Or Receptionist)
