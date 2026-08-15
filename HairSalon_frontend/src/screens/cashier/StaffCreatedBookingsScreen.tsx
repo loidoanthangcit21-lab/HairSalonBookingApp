@@ -42,7 +42,7 @@ export const StaffCreatedBookingsScreen = ({ navigation }: any) => {
           <EmptyState
             icon="clipboard-account"
             title="No Staff Created Bookings"
-            description="No walk-in or phone call appointments have been recorded by receptionists yet."
+            description="No walk-in or phone call appointments have been recorded by cashiers yet."
           />
         }
         renderItem={({ item }: { item: Booking }) => {

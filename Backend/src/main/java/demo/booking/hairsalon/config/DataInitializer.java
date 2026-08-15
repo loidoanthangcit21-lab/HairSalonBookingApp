@@ -66,6 +66,7 @@ public class DataInitializer implements CommandLineRunner {
             stylist1.setPassword(passwordEncoder.encode("password123"));
             stylist1.setRole(Role.STYLIST);
             stylist1.setEnabled(true);
+            stylist1.setAvatarUrl("https://images.unsplash.com/photo-1599566150163-29194dcaad36?auto=format&fit=crop&q=80&w=256&h=256");
             userRepository.save(stylist1);
 
             StylistProfile profile1 = new StylistProfile();
@@ -83,6 +84,7 @@ public class DataInitializer implements CommandLineRunner {
             stylist2.setPassword(passwordEncoder.encode("password123"));
             stylist2.setRole(Role.STYLIST);
             stylist2.setEnabled(true);
+            stylist2.setAvatarUrl("https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=256&h=256");
             userRepository.save(stylist2);
 
             StylistProfile profile2 = new StylistProfile();
@@ -153,6 +155,7 @@ public class DataInitializer implements CommandLineRunner {
             service1.setDuration(30); // 30 minutes
             service1.setActive(true);
             service1.setCategory(haircutCat);
+            service1.setImageUrl("https://images.unsplash.com/photo-1599351431202-1e0f0137899a?auto=format&fit=crop&q=80&w=800");
             salonServiceRepository.save(service1);
 
             SalonService service2 = new SalonService();
@@ -162,6 +165,7 @@ public class DataInitializer implements CommandLineRunner {
             service2.setDuration(45);
             service2.setActive(true);
             service2.setCategory(spaCat);
+            service2.setImageUrl("https://images.unsplash.com/photo-1515377905703-c4788e51af15?auto=format&fit=crop&q=80&w=800");
             salonServiceRepository.save(service2);
 
             SalonService service3 = new SalonService();
@@ -171,6 +175,7 @@ public class DataInitializer implements CommandLineRunner {
             service3.setDuration(120); // 2 hours
             service3.setActive(true);
             service3.setCategory(stylingCat);
+            service3.setImageUrl("https://images.unsplash.com/photo-1562322140-8baeececf3df?auto=format&fit=crop&q=80&w=800");
             salonServiceRepository.save(service3);
 
             SalonService service4 = new SalonService();
@@ -180,6 +185,7 @@ public class DataInitializer implements CommandLineRunner {
             service4.setDuration(150);
             service4.setActive(true);
             service4.setCategory(colorCat);
+            service4.setImageUrl("https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800");
             salonServiceRepository.save(service4);
 
             log.info("Salon services initialized successfully.");

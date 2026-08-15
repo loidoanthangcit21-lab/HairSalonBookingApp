@@ -1,11 +1,11 @@
 export enum UserRole {
   CUSTOMER = 'CUSTOMER',
-  RECEPTIONIST = 'RECEPTIONIST',
+  CASHIER = 'CASHIER',
   STYLIST = 'STYLIST',
 }
 
 export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.CUSTOMER]: 'Customer',
-  [UserRole.RECEPTIONIST]: 'Receptionist',
+  [UserRole.CASHIER]: 'Cashier / Cashier',
   [UserRole.STYLIST]: 'Stylist',
 };

@@ -136,7 +136,7 @@ export const ProcessPaymentScreen = ({ navigation, route }: any) => {
             </Chip>
           </View>
           <Text variant="bodySmall" style={{ marginTop: 8, opacity: 0.8 }}>
-            Customer will pay ${grandTotal} in cash directly to the receptionist at the front counter.
+            Customer will pay ${grandTotal} in cash directly to the cashier at the front counter.
           </Text>
         </Surface>
       </ScrollView>

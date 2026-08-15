@@ -10,7 +10,7 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/userService';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { logout } from '../../store/authSlice';
@@ -30,8 +30,11 @@ export const ViewProfileScreen = ({ navigation }: any) => {
 
   const activeProfile = profile || reduxUser;
 
+  const queryClient = useQueryClient();
+
   const handleLogout = async () => {
     await storage.clearAll();
+    queryClient.clear();
     dispatch(logout());
   };
 

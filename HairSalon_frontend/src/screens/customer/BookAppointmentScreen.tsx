@@ -36,8 +36,8 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   const queryClient = useQueryClient();
   const user = useAppSelector((state) => state.auth.user);
 
-  const initialServiceId = route?.params?.selectedServiceId || 'srv_1';
-  const initialStylistId = route?.params?.selectedStylistId || 'usr_stylist_1';
+  const initialServiceId = route?.params?.selectedServiceId || null;
+  const initialStylistId = route?.params?.selectedStylistId || null;
 
   const upcomingDates = React.useMemo(() => {
     const datesList = [];
@@ -56,11 +56,11 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(
-    initialServiceId ? [initialServiceId] : ['srv_1']
+    initialServiceId ? [initialServiceId] : []
   );
   const [selectedDate, setSelectedDate] = useState(upcomingDates[0].value);
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('09:30 AM');
-  const [selectedStylistId, setSelectedStylistId] = useState(initialStylistId);
+  const [selectedStylistId, setSelectedStylistId] = useState(initialStylistId || '');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [notes, setNotes] = useState('');
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -181,11 +181,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   const totalPrice = chosenServices.reduce((sum, s) => sum + s.price, 0);
   const totalDuration = chosenServices.reduce((sum, s) => sum + (s.durationMinutes || 30), 0);
 
-  const chosenStylist = (stylists || []).find((st) => st.id === selectedStylistId) || {
-    id: 'usr_stylist_1',
-    fullName: 'David Miller',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
-  };
+  const chosenStylist = (stylists || []).find((st) => st.id === selectedStylistId);
 
   const filteredServices = (services || []).filter((s) => {
     if (selectedCategory === 'all') return true;
@@ -238,8 +234,8 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
         bookingDate: selectedDate,
         timeSlot: selectedTimeSlot,
         notes,
-        customerName: user?.fullName || 'Alex Johnson',
-        customerPhone: user?.phone || '0901234567',
+        customerName: user?.fullName || 'Customer',
+        customerPhone: user?.phone || '',
       };
       if (rescheduleBookingId) {
         return bookingService.rescheduleBooking(rescheduleBookingId, dto);
@@ -662,7 +658,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
                 <Divider />
                 <List.Item
                   title="Assigned Stylist"
-                  description={chosenStylist.fullName}
+                  description={chosenStylist?.fullName || 'Not selected'}
                   left={(p) => <List.Icon {...p} icon="account-star" />}
                 />
                 <Divider />
@@ -710,6 +706,10 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
             contentStyle={{ flexDirection: 'row-reverse' }}
             onPress={() => setCurrentStep(currentStep + 1)}
             style={styles.continueBtn}
+            disabled={
+              (currentStep === 1 && selectedServiceIds.length === 0) ||
+              (currentStep === 3 && !selectedStylistId)
+            }
           >
             Continue
           </Button>

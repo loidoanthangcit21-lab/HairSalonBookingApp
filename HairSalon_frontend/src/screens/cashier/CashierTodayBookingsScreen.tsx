@@ -21,7 +21,7 @@ import {
   BookingStatus,
 } from '../../constants/bookingStatus';
 
-export const ReceptionistTodayBookingsScreen = ({ navigation }: any) => {
+export const CashierTodayBookingsScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState('');
@@ -126,11 +126,11 @@ export const ReceptionistTodayBookingsScreen = ({ navigation }: any) => {
                     Stylist: {item.stylistName}
                   </Chip>
 
-                  {item.createdByStaff ? (
-                    <Chip icon="account-badge" compact>
+                  {item.createdByStaff && (
+                    <Chip icon="account-edit-outline" compact>
                       Staff Created
                     </Chip>
-                  ) : null}
+                  )}
                 </View>
                 <Text variant="bodyMedium" style={{ marginTop: 8 }}>
                   Services: {item.services.map((s) => s.title).join(', ')} (${item.totalAmount})

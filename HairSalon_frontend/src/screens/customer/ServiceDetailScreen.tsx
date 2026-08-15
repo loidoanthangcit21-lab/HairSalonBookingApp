@@ -29,7 +29,7 @@ export const ServiceDetailScreen = ({ navigation, route }: any) => {
     categoryName: 'Haircut',
   };
 
-  const isStaff = user?.role === UserRole.RECEPTIONIST || user?.role === UserRole.STYLIST;
+  const isStaff = user?.role === UserRole.CASHIER || user?.role === UserRole.STYLIST;
 
   const topInset = insets.top > 0 ? insets.top + 8 : 16;
   const bottomPadding = insets.bottom > 0 ? insets.bottom + 12 : 16;

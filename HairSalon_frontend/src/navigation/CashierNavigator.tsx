@@ -4,10 +4,10 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Avatar, useTheme } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ReceptionistTodayBookingsScreen } from '../screens/receptionist/ReceptionistTodayBookingsScreen';
-import { StaffBookingFormScreen } from '../screens/receptionist/StaffBookingFormScreen';
-import { StaffCreatedBookingsScreen } from '../screens/receptionist/StaffCreatedBookingsScreen';
-import { ProcessPaymentScreen } from '../screens/receptionist/ProcessPaymentScreen';
+import { CashierTodayBookingsScreen } from '../screens/cashier/CashierTodayBookingsScreen';
+import { StaffBookingFormScreen } from '../screens/cashier/StaffBookingFormScreen';
+import { StaffCreatedBookingsScreen } from '../screens/cashier/StaffCreatedBookingsScreen';
+import { ProcessPaymentScreen } from '../screens/cashier/ProcessPaymentScreen';
 
 import { BrowseServicesScreen } from '../screens/customer/BrowseServicesScreen';
 import { BrowseStylistsScreen } from '../screens/customer/BrowseStylistsScreen';
@@ -20,7 +20,7 @@ import { SettingsScreen } from '../screens/auth/SettingsScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-const ReceptionistTabs = () => {
+const CashierTabs = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 14;
@@ -50,7 +50,7 @@ const ReceptionistTabs = () => {
         },
       })}
     >
-      <Tab.Screen name="QueueTab" component={ReceptionistTodayBookingsScreen} options={{ tabBarLabel: "Today Queue" }} />
+      <Tab.Screen name="QueueTab" component={CashierTodayBookingsScreen} options={{ tabBarLabel: "Today Queue" }} />
       <Tab.Screen name="WalkinTab" component={StaffBookingFormScreen} options={{ tabBarLabel: 'Walk-in' }} />
       <Tab.Screen name="TrackingTab" component={StaffCreatedBookingsScreen} options={{ tabBarLabel: 'Staff Created' }} />
       <Tab.Screen name="ProfileTab" component={ViewProfileScreen} options={{ tabBarLabel: 'Profile' }} />
@@ -58,11 +58,11 @@ const ReceptionistTabs = () => {
   );
 };
 
-export const ReceptionistNavigator = () => {
+export const CashierNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ReceptionistMainTabs" component={ReceptionistTabs} />
-      <Stack.Screen name="ReceptionistTodayBookings" component={ReceptionistTodayBookingsScreen} />
+      <Stack.Screen name="CashierMainTabs" component={CashierTabs} />
+      <Stack.Screen name="CashierTodayBookings" component={CashierTodayBookingsScreen} />
       <Stack.Screen name="StaffBookingForm" component={StaffBookingFormScreen} />
       <Stack.Screen name="StaffCreatedBookings" component={StaffCreatedBookingsScreen} />
       <Stack.Screen name="BrowseServices" component={BrowseServicesScreen} />

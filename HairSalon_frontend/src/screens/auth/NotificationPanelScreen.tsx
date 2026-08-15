@@ -8,7 +8,7 @@ import {
   SegmentedButtons,
   useTheme,
 } from 'react-native-paper';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { userService } from '../../services/userService';
 import { LoadingOverlay } from '../../components/LoadingOverlay';
 import { EmptyState } from '../../components/EmptyState';
@@ -18,10 +18,28 @@ export const NotificationPanelScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
+  const queryClient = useQueryClient();
+
   const { data: notifications, isLoading, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => userService.getNotifications(),
   });
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: string) => userService.markNotificationAsRead(id),
+    onSuccess: (_, variables) => {
+      queryClient.setQueryData(['notifications'], (old: NotificationItem[] | undefined) => {
+        if (!old) return old;
+        return old.map((n) => (n.id === variables ? { ...n, read: true } : n));
+      });
+    },
+  });
+
+  const handlePress = (item: NotificationItem) => {
+    if (!item.read) {
+      markAsReadMutation.mutate(item.id);
+    }
+  };
 
   const filteredList = (notifications || []).filter((item) =>
     filter === 'unread' ? !item.read : true
@@ -65,7 +83,7 @@ export const NotificationPanelScreen = ({ navigation }: any) => {
           />
         }
         renderItem={({ item }: { item: NotificationItem }) => (
-          <Card mode="elevated" style={styles.card}>
+          <Card mode="elevated" style={styles.card} onPress={() => handlePress(item)}>
             <Card.Title
               title={item.title}
               subtitle={`${item.message}\n• ${item.timestamp}`}

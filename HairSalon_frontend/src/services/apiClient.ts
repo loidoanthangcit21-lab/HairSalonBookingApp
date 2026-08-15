@@ -17,3 +17,23 @@ apiClient.interceptors.request.use(async (config) => {
   }
   return config;
 });
+
+apiClient.interceptors.response.use(
+  (response) => {
+    // If the response data has our ApiResponse wrapper format, unwrap it
+    if (response.data && response.data.hasOwnProperty('success')) {
+      if (!response.data.success) {
+        return Promise.reject(new Error(response.data.message || 'API Error'));
+      }
+      // Replace response.data with the unwrapped data payload
+      response.data = response.data.data;
+    }
+    return response;
+  },
+  (error) => {
+    if (error.response && error.response.data && error.response.data.message) {
+      return Promise.reject(new Error(error.response.data.message));
+    }
+    return Promise.reject(error);
+  }
+);

@@ -57,8 +57,8 @@ const CustomerTabs = () => {
       <Tab.Screen name="HomeTab" component={CustomerHomeScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="BookAppointmentTab" component={BookAppointmentScreen} options={{ tabBarLabel: 'Booking' }} />
       <Tab.Screen name="MyBookingsTab" component={MyBookingsScreen} options={{ tabBarLabel: 'Appointment' }} />
-      <Tab.Screen name="ProfileTab" component={ViewProfileScreen} options={{ tabBarLabel: 'Profile' }} />
       <Tab.Screen name="NotificationTab" component={NotificationPanelScreen} options={{ tabBarLabel: 'Notification' }} />
+      <Tab.Screen name="ProfileTab" component={ViewProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 };

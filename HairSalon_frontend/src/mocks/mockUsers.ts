@@ -12,12 +12,12 @@ export const MOCK_USERS: UserProfile[] = [
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
   },
   {
-    id: 'usr_receptionist_1',
+    id: 'usr_cashier_1',
     fullName: 'Emily Clark',
     email: 'reception@salon.com',
     phone: '0907654321',
     address: 'Salon HQ, District 3, HCMC',
-    role: UserRole.RECEPTIONIST,
+    role: UserRole.CASHIER,
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300',
   },
   {

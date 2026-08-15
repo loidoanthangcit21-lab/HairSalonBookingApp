@@ -5,7 +5,7 @@ import { UserRole } from '../constants/roles';
 
 import { AuthNavigator } from './AuthNavigator';
 import { CustomerNavigator } from './CustomerNavigator';
-import { ReceptionistNavigator } from './ReceptionistNavigator';
+import { CashierNavigator } from './CashierNavigator';
 import { StylistNavigator } from './StylistNavigator';
 
 export const AppNavigator = () => {
@@ -17,8 +17,8 @@ export const AppNavigator = () => {
     }
 
     switch (user.role) {
-      case UserRole.RECEPTIONIST:
-        return <ReceptionistNavigator />;
+      case UserRole.CASHIER:
+        return <CashierNavigator />;
       case UserRole.STYLIST:
         return <StylistNavigator />;
       case UserRole.CUSTOMER:

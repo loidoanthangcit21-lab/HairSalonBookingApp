@@ -22,7 +22,7 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const isSelectionMode = route?.params?.isSelectionMode || false;
-  const initialSelectedIds: string[] = route?.params?.selectedServiceIds || ['srv_1'];
+  const initialSelectedIds: string[] = route?.params?.selectedServiceIds || [];
   const returnScreen = route?.params?.returnScreen;
 
   const [selectedIds, setSelectedIds] = useState<string[]>(initialSelectedIds);

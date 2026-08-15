@@ -10,11 +10,13 @@ import {
   Text,
   useTheme,
 } from 'react-native-paper';
-import { MOCK_STYLISTS } from '../../mocks/mockServices';
 
 export const StylistProfileDetailScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
-  const stylist = route?.params?.stylist || MOCK_STYLISTS[0];
+  const stylist = route?.params?.stylist;
+
+  if (!stylist) return null; // Safe guard if stylist is missing
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

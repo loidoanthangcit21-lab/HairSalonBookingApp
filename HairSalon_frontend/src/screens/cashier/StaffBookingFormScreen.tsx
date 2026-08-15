@@ -129,8 +129,8 @@ export const StaffBookingFormScreen = ({ navigation, route }: any) => {
     defaultValues: {
       customerName: '',
       customerPhone: '',
-      serviceIds: ['srv_1'],
-      stylistId: 'usr_stylist_1',
+      serviceIds: [],
+      stylistId: '',
       bookingDate: upcomingDates[0].value,
       timeSlot: '09:30 AM',
       notes: '',
@@ -207,7 +207,7 @@ export const StaffBookingFormScreen = ({ navigation, route }: any) => {
       queryClient.invalidateQueries({ queryKey: ['staffCreatedBookings'] });
       setSnackbarVisible(true);
       setTimeout(() => {
-        navigation.navigate('ReceptionistMainTabs', { screen: 'TrackingTab' });
+        navigation.navigate('CashierMainTabs', { screen: 'TrackingTab' });
       }, 1500);
     },
   });
@@ -475,13 +475,13 @@ export const StaffBookingFormScreen = ({ navigation, route }: any) => {
           })}
         </ScrollView>
 
-        {/* Receptionist Notes */}
+        {/* Cashier Notes */}
         <Controller
           control={control}
           name="notes"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Receptionist Notes / Requests"
+              label="Cashier Notes / Requests"
               mode="outlined"
               multiline
               numberOfLines={3}

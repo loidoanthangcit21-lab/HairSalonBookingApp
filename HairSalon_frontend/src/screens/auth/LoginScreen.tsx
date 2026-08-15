@@ -9,7 +9,6 @@ import {
 import {
   Button,
   HelperText,
-  SegmentedButtons,
   Text,
   TextInput,
   useTheme,
@@ -22,10 +21,9 @@ import { authService } from '../../services/authService';
 import { storage } from '../../utils/storage';
 import { useAppDispatch } from '../../store';
 import { setCredentials } from '../../store/authSlice';
-import { UserRole } from '../../constants/roles';
 
 const loginSchema = z.object({
-  emailOrPhone: z.string().min(3, 'Username or Email is required'),
+  email: z.string().min(3, 'Username or Email is required'),
   password: z.string().min(4, 'Password must be at least 4 characters'),
 });
 
@@ -35,7 +33,6 @@ export const LoginScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.CUSTOMER);
 
   const {
     control,
@@ -43,15 +40,11 @@ export const LoginScreen = ({ navigation }: any) => {
     formState: { errors },
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      emailOrPhone: 'alex@example.com',
-      password: 'password123',
-    },
   });
 
   const loginMutation = useMutation({
     mutationFn: (values: LoginFormValues) =>
-      authService.login(values.emailOrPhone, selectedRole),
+      authService.login(values.email, values.password),
     onSuccess: async (data) => {
       await storage.setToken(data.token);
       await storage.setUser(data.user);
@@ -78,25 +71,10 @@ export const LoginScreen = ({ navigation }: any) => {
           </Text>
         </View>
 
-        <View style={styles.roleContainer}>
-          <Text variant="labelLarge" style={styles.roleLabel}>
-            Choose Demo Role to Log In:
-          </Text>
-          <SegmentedButtons
-            value={selectedRole}
-            onValueChange={(val) => setSelectedRole(val as UserRole)}
-            buttons={[
-              { value: UserRole.CUSTOMER, label: 'Customer' },
-              { value: UserRole.RECEPTIONIST, label: 'Receptionist' },
-              { value: UserRole.STYLIST, label: 'Stylist' },
-            ]}
-          />
-        </View>
-
         <View style={styles.form}>
           <Controller
             control={control}
-            name="emailOrPhone"
+            name="email"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 label="Username / Email"
@@ -105,13 +83,13 @@ export const LoginScreen = ({ navigation }: any) => {
                 onBlur={onBlur}
                 onChangeText={onChange}
                 value={value}
-                error={!!errors.emailOrPhone}
+                error={!!errors.email}
               />
             )}
           />
-          {errors.emailOrPhone && (
+          {errors.email && (
             <HelperText type="error" visible={true}>
-              {errors.emailOrPhone.message}
+              {errors.email.message}
             </HelperText>
           )}
 
@@ -141,6 +119,12 @@ export const LoginScreen = ({ navigation }: any) => {
           {errors.password && (
             <HelperText type="error" visible={true}>
               {errors.password.message}
+            </HelperText>
+          )}
+
+          {loginMutation.isError && (
+            <HelperText type="error" visible={true} style={{ textAlign: 'center', marginTop: 8 }}>
+              {loginMutation.error.message}
             </HelperText>
           )}
 

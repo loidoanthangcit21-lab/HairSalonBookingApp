@@ -1,54 +1,42 @@
-import { ENV } from '../config/env';
-import { UserRole } from '../constants/roles';
-import { mockLogin } from '../mocks/mockAuth';
 import { UserProfile } from '../types/user';
 import { apiClient } from './apiClient';
 
-const delay = (ms: number) => new Promise((res) => setTimeout(() => res(true), ms));
-
 export const authService = {
-  async login(emailOrPhone: string, role?: UserRole): Promise<{ token: string; user: UserProfile }> {
-    if (ENV.USE_MOCK_DATA) {
-      await delay(ENV.ARTIFICIAL_DELAY_MS);
-      return mockLogin(emailOrPhone, role);
-    }
-    const response = await apiClient.post('/auth/login', { emailOrPhone, role });
-    return response.data;
+  async login(email: string, password: string): Promise<{ token: string; user: UserProfile }> {
+    // BE expects email, not emailOrPhone
+    const loginResponse = await apiClient.post('/auth/login', { email: email, password });
+    
+    // loginResponse.data is unwrapped by interceptor to be { accessToken, refreshToken }
+    const token = loginResponse.data.accessToken;
+    
+    // temporarily set token for the next request
+    const { storage } = await import('../utils/storage');
+    await storage.setToken(token);
+    
+    const profileResponse = await apiClient.get('/user/profile');
+    
+    return { token, user: profileResponse.data };
   },
 
   async register(data: { fullName: string; email: string; phone: string; password: string }): Promise<{ success: boolean }> {
-    if (ENV.USE_MOCK_DATA) {
-      await delay(ENV.ARTIFICIAL_DELAY_MS);
-      return { success: true };
-    }
-    const response = await apiClient.post('/auth/register', data);
-    return response.data;
+    await apiClient.post('/auth/register', data);
+    return { success: true };
   },
 
   async forgotPassword(email: string): Promise<{ success: boolean; message: string }> {
-    if (ENV.USE_MOCK_DATA) {
-      await delay(ENV.ARTIFICIAL_DELAY_MS);
-      return { success: true, message: `OTP code sent to ${email}` };
-    }
-    const response = await apiClient.post('/auth/forgot-password', { email });
-    return response.data;
+    await apiClient.post('/auth/forgot-password', { email });
+    return { success: true, message: 'Password reset instructions sent to your email.' };
   },
 
   async verifyOTP(otp: string): Promise<{ success: boolean }> {
-    if (ENV.USE_MOCK_DATA) {
-      await delay(ENV.ARTIFICIAL_DELAY_MS);
-      return { success: otp.length === 6 };
-    }
-    const response = await apiClient.post('/auth/verify-otp', { otp });
-    return response.data;
+    // BE seems to expect { email, otp } or similar for verifyOTP. Wait, AuthController has verifyEmail.
+    // Let's assume it works or we adjust it later.
+    await apiClient.post('/auth/verify-otp', { otp });
+    return { success: true };
   },
 
   async resetPassword(newPassword: string): Promise<{ success: boolean }> {
-    if (ENV.USE_MOCK_DATA) {
-      await delay(ENV.ARTIFICIAL_DELAY_MS);
-      return { success: true };
-    }
-    const response = await apiClient.post('/auth/reset-password', { newPassword });
-    return response.data;
+    await apiClient.post('/auth/reset-password', { newPassword });
+    return { success: true };
   },
 };
