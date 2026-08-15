@@ -18,6 +18,7 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByStylistIdAndAppointmentDate(UUID stylistId, LocalDate date);
     List<Booking> findByAppointmentDateOrderByStartTimeAsc(LocalDate date);
     List<Booking> findByStylistIdAndStatusIn(UUID stylistId, List<BookingStatus> statuses);
+    List<Booking> findByCreatedByStaffTrueOrderByAppointmentDateDescStartTimeDesc();
 
     @Query("SELECT COUNT(b) FROM Booking b WHERE b.stylist.id = :stylistId " +
            "AND b.appointmentDate = :date " +
@@ -28,4 +29,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
                                   @Param("startTime") LocalTime startTime,
                                   @Param("endTime") LocalTime endTime,
                                   @Param("statuses") List<BookingStatus> statuses);
+
+    @Query("SELECT COUNT(b) FROM Booking b WHERE b.stylist.id = :stylistId " +
+           "AND b.id != :excludeBookingId " +
+           "AND b.appointmentDate = :date " +
+           "AND b.status IN :statuses " +
+           "AND b.startTime < :endTime AND b.endTime > :startTime")
+    long countOverlappingBookingsExcludeId(@Param("stylistId") UUID stylistId,
+                                           @Param("excludeBookingId") UUID excludeBookingId,
+                                           @Param("date") LocalDate date,
+                                           @Param("startTime") LocalTime startTime,
+                                           @Param("endTime") LocalTime endTime,
+                                           @Param("statuses") List<BookingStatus> statuses);
 }

@@ -10,4 +10,5 @@ import java.util.UUID;
 @Repository
 public interface BookingServiceRepository extends JpaRepository<BookingService, UUID> {
     List<BookingService> findByBookingId(UUID bookingId);
+    void deleteByBookingId(UUID bookingId);
 }

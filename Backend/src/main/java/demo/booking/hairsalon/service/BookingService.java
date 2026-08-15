@@ -13,14 +13,16 @@ public interface BookingService {
     BookingResponse createBooking(String customerEmail, BookingRequest request);
     List<BookingResponse> getMyBookings(String customerEmail);
     BookingResponse getBookingById(UUID id);
+    BookingResponse updateBooking(String customerEmail, UUID bookingId, BookingRequest request);
     void cancelBooking(String customerEmail, UUID bookingId);
 
     // Receptionist
     List<BookingResponse> getTodayBookings();
-    BookingResponse receptionistCreateBooking(BookingRequest request, UUID customerId);
+    List<BookingResponse> getStaffCreatedBookings();
+    BookingResponse receptionistCreateBooking(BookingRequest request);
     void markAsPaid(UUID bookingId);
 
-    // Stylist
+    // Stylist (Or Receptionist)
     List<BookingResponse> getStylistAssignedJobs(String stylistEmail);
-    void updateBookingStatus(String stylistEmail, UUID bookingId, BookingStatus newStatus);
+    void updateBookingStatus(UUID bookingId, BookingStatus newStatus);
 }

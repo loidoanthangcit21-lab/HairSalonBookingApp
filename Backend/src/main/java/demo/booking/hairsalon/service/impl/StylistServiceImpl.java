@@ -36,14 +36,14 @@ public class StylistServiceImpl implements StylistService {
 
     private StylistResponse mapToResponse(StylistProfile profile) {
         return new StylistResponse(
-                profile.getId(),
                 profile.getUser().getId(),
-                profile.getUser().getFirstName(),
-                profile.getUser().getLastName(),
+                profile.getUser().getFirstName() + " " + profile.getUser().getLastName(),
+                profile.getSpecialty(),
+                profile.getRating(),
+                profile.getExperienceYears(),
                 profile.getUser().getAvatarUrl(),
                 profile.getBio(),
-                profile.getExperienceYears(),
-                profile.getRating()
+                java.util.Collections.emptyList()
         );
     }
 }

@@ -42,7 +42,9 @@ public class SalonServiceServiceImpl implements SalonServiceService {
                 service.getDescription(),
                 service.getPrice(),
                 service.getDuration(),
-                service.getImageUrl()
+                service.getImageUrl(),
+                service.getCategory() != null ? service.getCategory().getId() : null,
+                service.getCategory() != null ? service.getCategory().getName() : null
         );
     }
 }

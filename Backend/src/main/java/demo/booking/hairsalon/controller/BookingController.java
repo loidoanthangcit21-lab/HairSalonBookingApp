@@ -21,10 +21,16 @@ public class BookingController {
     private final BookingService bookingService;
 
     @PostMapping
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasAnyRole('CUSTOMER', 'RECEPTIONIST')")
     public ApiResponse<BookingResponse> createBooking(@Valid @RequestBody BookingRequest request) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return ApiResponse.success(bookingService.createBooking(email, request), "Booking created successfully", null);
+        org.springframework.security.core.Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isReceptionist = auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_RECEPTIONIST"));
+        if (isReceptionist) {
+            return ApiResponse.success(bookingService.receptionistCreateBooking(request), "Booking created successfully", null);
+        } else {
+            String email = auth.getName();
+            return ApiResponse.success(bookingService.createBooking(email, request), "Booking created successfully", null);
+        }
     }
 
     @GetMapping("/my-bookings")
@@ -40,7 +46,14 @@ public class BookingController {
         return ApiResponse.success(bookingService.getBookingById(id), "Booking retrieved successfully", null);
     }
 
-    @PutMapping("/{id}/cancel")
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<BookingResponse> updateBooking(@PathVariable UUID id, @Valid @RequestBody BookingRequest request) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ApiResponse.success(bookingService.updateBooking(email, id, request), "Booking updated successfully", null);
+    }
+
+    @PatchMapping("/{id}/cancel")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<Void> cancelBooking(@PathVariable UUID id) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -48,10 +61,36 @@ public class BookingController {
         return ApiResponse.success(null, "Booking cancelled successfully", null);
     }
 
-    @PutMapping("/{id}/pay")
+    @PostMapping("/{id}/process-payment")
     @PreAuthorize("hasRole('RECEPTIONIST')")
     public ApiResponse<Void> markBookingAsPaid(@PathVariable UUID id) {
         bookingService.markAsPaid(id);
         return ApiResponse.success(null, "Booking marked as paid successfully", null);
+    }
+
+    @GetMapping("/today")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    public ApiResponse<List<BookingResponse>> getTodayBookings() {
+        return ApiResponse.success(bookingService.getTodayBookings(), "Today's bookings retrieved successfully", null);
+    }
+
+    @GetMapping("/stylist-jobs")
+    @PreAuthorize("hasRole('STYLIST')")
+    public ApiResponse<List<BookingResponse>> getStylistAssignedJobs() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ApiResponse.success(bookingService.getStylistAssignedJobs(email), "Assigned jobs retrieved successfully", null);
+    }
+
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    public ApiResponse<Void> updateBookingStatus(@PathVariable UUID id, @RequestBody java.util.Map<String, demo.booking.hairsalon.model.enums.BookingStatus> body) {
+        bookingService.updateBookingStatus(id, body.get("status"));
+        return ApiResponse.success(null, "Booking status updated successfully", null);
+    }
+
+    @GetMapping("/staff-created")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    public ApiResponse<List<BookingResponse>> getStaffCreatedBookings() {
+        return ApiResponse.success(bookingService.getStaffCreatedBookings(), "Staff created bookings retrieved successfully", null);
     }
 }

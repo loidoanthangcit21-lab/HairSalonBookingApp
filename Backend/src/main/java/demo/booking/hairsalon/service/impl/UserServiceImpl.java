@@ -40,12 +40,17 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse mapToResponse(User user) {
         return new UserProfileResponse(
                 user.getId(),
-                user.getFirstName(),
-                user.getLastName(),
+                user.getFirstName() + " " + user.getLastName(),
                 user.getEmail(),
-                user.getRole().name(),
                 user.getPhoneNumber(),
-                user.getAvatarUrl()
+                null, // address
+                user.getRole().name(),
+                user.getAvatarUrl(),
+                null, // specialty
+                null, // experienceYears
+                null, // bio
+                null, // rating
+                null  // portfolioImages
         );
     }
 }

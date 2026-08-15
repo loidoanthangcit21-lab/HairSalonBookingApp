@@ -4,10 +4,12 @@ import java.util.UUID;
 
 public record SalonServiceResponse(
         UUID id,
-        String name,
+        String title,
         String description,
         Double price,
-        Integer duration,
-        String imageUrl
+        Integer durationMinutes,
+        String imageUrl,
+        UUID categoryId,
+        String categoryName
 ) {
 }

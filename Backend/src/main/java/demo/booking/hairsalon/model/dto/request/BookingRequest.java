@@ -2,25 +2,32 @@ package demo.booking.hairsalon.model.dto.request;
 
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotBlank;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
 public record BookingRequest(
-        @NotNull(message = "Appointment date is required")
-        @FutureOrPresent(message = "Appointment date cannot be in the past")
-        LocalDate appointmentDate,
+        @NotBlank(message = "Booking date is required")
+        String bookingDate,
 
-        @NotNull(message = "Start time is required")
-        LocalTime startTime,
+        @NotBlank(message = "Time slot is required")
+        String timeSlot,
 
         UUID stylistId,
 
         @NotEmpty(message = "At least one service must be selected")
         List<UUID> serviceIds,
 
-        String notes
+        String notes,
+        
+        String customerName,
+        
+        String customerPhone,
+        
+        Boolean createdByStaff,
+        
+        String creationType
 ) {
 }

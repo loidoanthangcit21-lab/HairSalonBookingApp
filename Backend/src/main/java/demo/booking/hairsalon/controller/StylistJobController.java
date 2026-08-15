@@ -28,8 +28,7 @@ public class StylistJobController {
 
     @PutMapping("/jobs/{id}/status")
     public ApiResponse<Void> updateJobStatus(@PathVariable UUID id, @RequestParam BookingStatus newStatus) {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        bookingService.updateBookingStatus(email, id, newStatus);
+        bookingService.updateBookingStatus(id, newStatus);
         return ApiResponse.success(null, "Job status updated successfully", null);
     }
 }

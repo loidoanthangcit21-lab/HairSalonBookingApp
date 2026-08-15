@@ -7,12 +7,24 @@ import demo.booking.hairsalon.model.enums.Role;
 import demo.booking.hairsalon.repository.SalonServiceRepository;
 import demo.booking.hairsalon.repository.StylistProfileRepository;
 import demo.booking.hairsalon.repository.UserRepository;
+import demo.booking.hairsalon.model.entity.Booking;
+import demo.booking.hairsalon.model.entity.BookingService;
+import demo.booking.hairsalon.model.enums.BookingStatus;
+import demo.booking.hairsalon.model.enums.PaymentStatus;
+import demo.booking.hairsalon.repository.BookingRepository;
+import demo.booking.hairsalon.repository.BookingServiceRepository;
+import demo.booking.hairsalon.model.entity.ServiceCategory;
+import demo.booking.hairsalon.repository.ServiceCategoryRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
 
 @Component
 @RequiredArgsConstructor
@@ -22,6 +34,9 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final StylistProfileRepository stylistProfileRepository;
     private final SalonServiceRepository salonServiceRepository;
+    private final BookingRepository bookingRepository;
+    private final BookingServiceRepository bookingServiceRepository;
+    private final ServiceCategoryRepository serviceCategoryRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -85,6 +100,7 @@ public class DataInitializer implements CommandLineRunner {
             customer.setPassword(passwordEncoder.encode("password123"));
             customer.setRole(Role.CUSTOMER);
             customer.setEnabled(true);
+            customer.setPhoneNumber("0901234567");
             userRepository.save(customer);
 
             customer = new User();
@@ -94,6 +110,7 @@ public class DataInitializer implements CommandLineRunner {
             customer.setPassword(passwordEncoder.encode("password123"));
             customer.setRole(Role.CUSTOMER);
             customer.setEnabled(true);
+            customer.setPhoneNumber("0987654321");
             userRepository.save(customer);
 
             log.info("Users and Profiles initialized successfully.");
@@ -101,9 +118,33 @@ public class DataInitializer implements CommandLineRunner {
             log.info("Users already exist. Skipping initialization.");
         }
 
-        // 2. Initialize Salon Services
+        // 2. Initialize Salon Services and Categories
+        if (serviceCategoryRepository.count() == 0) {
+            log.info("Creating initial service categories...");
+            ServiceCategory cat1 = new ServiceCategory();
+            cat1.setName("Haircut");
+            serviceCategoryRepository.save(cat1);
+
+            ServiceCategory cat2 = new ServiceCategory();
+            cat2.setName("Styling & Perm");
+            serviceCategoryRepository.save(cat2);
+
+            ServiceCategory cat3 = new ServiceCategory();
+            cat3.setName("Coloring");
+            serviceCategoryRepository.save(cat3);
+
+            ServiceCategory cat4 = new ServiceCategory();
+            cat4.setName("Spa & Treatment");
+            serviceCategoryRepository.save(cat4);
+        }
+
         if (salonServiceRepository.count() == 0) {
             log.info("Creating initial salon services...");
+
+            ServiceCategory haircutCat = serviceCategoryRepository.findByName("Haircut").orElse(null);
+            ServiceCategory spaCat = serviceCategoryRepository.findByName("Spa & Treatment").orElse(null);
+            ServiceCategory stylingCat = serviceCategoryRepository.findByName("Styling & Perm").orElse(null);
+            ServiceCategory colorCat = serviceCategoryRepository.findByName("Coloring").orElse(null);
 
             SalonService service1 = new SalonService();
             service1.setName("Cắt tóc nam (Haircut)");
@@ -111,6 +152,7 @@ public class DataInitializer implements CommandLineRunner {
             service1.setPrice(100000.0);
             service1.setDuration(30); // 30 minutes
             service1.setActive(true);
+            service1.setCategory(haircutCat);
             salonServiceRepository.save(service1);
 
             SalonService service2 = new SalonService();
@@ -119,6 +161,7 @@ public class DataInitializer implements CommandLineRunner {
             service2.setPrice(150000.0);
             service2.setDuration(45);
             service2.setActive(true);
+            service2.setCategory(spaCat);
             salonServiceRepository.save(service2);
 
             SalonService service3 = new SalonService();
@@ -127,6 +170,7 @@ public class DataInitializer implements CommandLineRunner {
             service3.setPrice(500000.0);
             service3.setDuration(120); // 2 hours
             service3.setActive(true);
+            service3.setCategory(stylingCat);
             salonServiceRepository.save(service3);
 
             SalonService service4 = new SalonService();
@@ -135,11 +179,90 @@ public class DataInitializer implements CommandLineRunner {
             service4.setPrice(800000.0);
             service4.setDuration(150);
             service4.setActive(true);
+            service4.setCategory(colorCat);
             salonServiceRepository.save(service4);
 
             log.info("Salon services initialized successfully.");
         } else {
             log.info("Services already exist. Skipping initialization.");
+        }
+
+        // 3. Initialize Bookings
+        if (bookingRepository.count() == 0) {
+            log.info("Creating initial bookings...");
+            
+            User customer1 = userRepository.findByEmail("khachhang1@example.com").orElse(null);
+            User customer2 = userRepository.findByEmail("khachhang2@example.com").orElse(null);
+            User stylist1 = userRepository.findByEmail("stylist1@example.com").orElse(null);
+            User stylist2 = userRepository.findByEmail("stylist2@example.com").orElse(null);
+
+            List<SalonService> allServices = salonServiceRepository.findAll();
+            SalonService s1 = allServices.isEmpty() ? null : allServices.get(0);
+            SalonService s2 = allServices.size() > 1 ? allServices.get(1) : null;
+
+            if (customer1 != null && stylist1 != null && s1 != null) {
+                // Booking 1: Customer created
+                Booking b1 = new Booking();
+                b1.setCustomer(customer1);
+                b1.setStylist(stylist1);
+                b1.setAppointmentDate(LocalDate.now().plusDays(1));
+                b1.setStartTime(LocalTime.of(10, 0));
+                b1.setEndTime(LocalTime.of(10, 30));
+                b1.setStatus(BookingStatus.PENDING);
+                b1.setPaymentStatus(PaymentStatus.UNPAID);
+                b1.setTotalAmount(s1.getPrice());
+                b1.setCreatedByStaff(false);
+                b1.setNotes("Khách tự đặt");
+                b1.setBookingCode("BK-1001");
+                b1.setCustomerName(customer1.getFirstName() + " " + customer1.getLastName());
+                b1.setCustomerPhone("0901234567");
+                b1.setCreationType("Online");
+                bookingRepository.save(b1);
+
+                BookingService bs1 = new BookingService();
+                bs1.setBooking(b1);
+                bs1.setService(s1);
+                bs1.setPriceAtBooking(s1.getPrice());
+                bookingServiceRepository.save(bs1);
+
+                // Booking 2: Staff created
+                if (customer2 != null && stylist2 != null) {
+                    Booking b2 = new Booking();
+                    b2.setCustomer(customer2);
+                    b2.setStylist(stylist2);
+                    b2.setAppointmentDate(LocalDate.now());
+                    b2.setStartTime(LocalTime.of(14, 0));
+                    b2.setEndTime(LocalTime.of(15, 0));
+                    b2.setStatus(BookingStatus.CONFIRMED);
+                    b2.setPaymentStatus(PaymentStatus.UNPAID);
+                    b2.setTotalAmount(s1.getPrice() + (s2 != null ? s2.getPrice() : 0));
+                    b2.setCreatedByStaff(true);
+                    b2.setNotes("Lễ tân đặt hộ (Walk-in)");
+                    b2.setBookingCode("BK-1002");
+                    b2.setCustomerName(customer2.getFirstName() + " " + customer2.getLastName());
+                    b2.setCustomerPhone("0987654321");
+                    b2.setCreationType("Walk-in");
+                    bookingRepository.save(b2);
+
+                    BookingService bs2_1 = new BookingService();
+                    bs2_1.setBooking(b2);
+                    bs2_1.setService(s1);
+                    bs2_1.setPriceAtBooking(s1.getPrice());
+                    bookingServiceRepository.save(bs2_1);
+
+                    if (s2 != null) {
+                        BookingService bs2_2 = new BookingService();
+                        bs2_2.setBooking(b2);
+                        bs2_2.setService(s2);
+                        bs2_2.setPriceAtBooking(s2.getPrice());
+                        bookingServiceRepository.save(bs2_2);
+                    }
+                }
+                
+                log.info("Bookings initialized successfully.");
+            }
+        } else {
+            log.info("Bookings already exist. Skipping initialization.");
         }
 
         log.info("Mock data initialization completed.");

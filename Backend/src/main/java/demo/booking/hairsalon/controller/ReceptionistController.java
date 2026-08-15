@@ -26,7 +26,7 @@ public class ReceptionistController {
     }
 
     @PostMapping("/bookings")
-    public ApiResponse<BookingResponse> createBookingForCustomer(@Valid @RequestBody BookingRequest request, @RequestParam UUID customerId) {
-        return ApiResponse.success(bookingService.receptionistCreateBooking(request, customerId), "Booking created successfully", null);
+    public ApiResponse<BookingResponse> createBookingForCustomer(@Valid @RequestBody BookingRequest request) {
+        return ApiResponse.success(bookingService.receptionistCreateBooking(request), "Booking created successfully", null);
     }
 }

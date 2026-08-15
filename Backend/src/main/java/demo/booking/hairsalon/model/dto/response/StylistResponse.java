@@ -4,12 +4,12 @@ import java.util.UUID;
 
 public record StylistResponse(
         UUID id,
-        UUID userId,
-        String firstName,
-        String lastName,
+        String fullName,
+        String specialty,
+        Double rating,
+        Integer experienceYears,
         String avatarUrl,
         String bio,
-        Integer experienceYears,
-        Double rating
+        java.util.List<String> portfolioImages
 ) {
 }

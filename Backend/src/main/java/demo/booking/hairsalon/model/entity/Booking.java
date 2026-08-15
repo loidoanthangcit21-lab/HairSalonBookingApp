@@ -51,8 +51,23 @@ public class Booking {
     @Column(name = "total_amount")
     private Double totalAmount;
 
+    @Column(name = "booking_code", unique = true)
+    private String bookingCode;
+
+    @Column(name = "customer_name")
+    private String customerName;
+
+    @Column(name = "customer_phone")
+    private String customerPhone;
+
     @Column(length = 1000)
     private String notes;
+
+    @Column(name = "created_by_staff")
+    private Boolean createdByStaff = false;
+
+    @Column(name = "creation_type")
+    private String creationType;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

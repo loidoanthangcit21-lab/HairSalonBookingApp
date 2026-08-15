@@ -7,17 +7,21 @@ import java.util.UUID;
 
 public record BookingResponse(
         UUID id,
+        String bookingCode,
         UUID customerId,
         String customerName,
+        String customerPhone,
         UUID stylistId,
         String stylistName,
-        LocalDate appointmentDate,
-        LocalTime startTime,
-        LocalTime endTime,
+        String bookingDate,
+        String timeSlot,
         String status,
         String paymentStatus,
         Double totalAmount,
         String notes,
+        Boolean createdByStaff,
+        String creationType,
+        String createdAt,
         List<SalonServiceResponse> services
 ) {
 }

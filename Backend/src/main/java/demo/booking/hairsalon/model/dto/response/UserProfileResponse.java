@@ -4,11 +4,16 @@ import java.util.UUID;
 
 public record UserProfileResponse(
         UUID id,
-        String firstName,
-        String lastName,
+        String fullName,
         String email,
+        String phone,
+        String address,
         String role,
-        String phoneNumber,
-        String avatarUrl
+        String avatarUrl,
+        String specialty,
+        Integer experienceYears,
+        String bio,
+        Double rating,
+        java.util.List<String> portfolioImages
 ) {
 }

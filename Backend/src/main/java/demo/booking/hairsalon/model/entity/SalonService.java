@@ -22,6 +22,10 @@ public class SalonService {
     @Column(nullable = false)
     private String name;
 
+    @ManyToOne
+    @JoinColumn(name = "category_id")
+    private ServiceCategory category;
+
     @Column(length = 1000)
     private String description;
 

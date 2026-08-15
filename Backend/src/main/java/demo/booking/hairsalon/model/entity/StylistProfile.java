@@ -23,6 +23,9 @@ public class StylistProfile {
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
+    @Column(name = "specialty")
+    private String specialty;
+
     @Column(length = 2000)
     private String bio;
 
