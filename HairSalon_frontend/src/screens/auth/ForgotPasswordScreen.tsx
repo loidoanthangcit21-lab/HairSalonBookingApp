@@ -38,7 +38,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
 
   const handleDialogDismiss = () => {
     setDialogVisible(false);
-    navigation.navigate('OTPVerification', { email });
+    navigation.navigate('OTPVerification', { email, purpose: 'resetPassword' });
   };
 
   return (

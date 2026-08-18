@@ -21,6 +21,11 @@ import { authService } from '../../services/authService';
 import { storage } from '../../utils/storage';
 import { useAppDispatch } from '../../store';
 import { setCredentials } from '../../store/authSlice';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+GoogleSignin.configure({
+  webClientId: 'YOUR_WEB_CLIENT_ID',
+});
 
 const loginSchema = z.object({
   email: z.string().min(3, 'Username or Email is required'),
@@ -54,6 +59,27 @@ export const LoginScreen = ({ navigation }: any) => {
 
   const onSubmit = (values: LoginFormValues) => {
     loginMutation.mutate(values);
+  };
+
+  const googleLoginMutation = useMutation({
+    mutationFn: (idToken: string) => authService.googleLogin(idToken),
+    onSuccess: async (data) => {
+      await storage.setToken(data.token);
+      await storage.setUser(data.user);
+      dispatch(setCredentials(data));
+    },
+  });
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      if (userInfo.type === 'success' && userInfo.data.idToken) {
+        googleLoginMutation.mutate(userInfo.data.idToken);
+      }
+    } catch (error: any) {
+      console.log('Google Sign-In Error:', error);
+    }
   };
 
   return (
@@ -140,11 +166,23 @@ export const LoginScreen = ({ navigation }: any) => {
             mode="contained"
             onPress={handleSubmit(onSubmit)}
             loading={loginMutation.isPending}
-            disabled={loginMutation.isPending}
+            disabled={loginMutation.isPending || googleLoginMutation.isPending}
             style={styles.submitBtn}
             contentStyle={{ paddingVertical: 6 }}
           >
             Sign In
+          </Button>
+
+          <Button
+            mode="outlined"
+            icon="google"
+            onPress={handleGoogleLogin}
+            loading={googleLoginMutation.isPending}
+            disabled={loginMutation.isPending || googleLoginMutation.isPending}
+            style={styles.googleBtn}
+            contentStyle={{ paddingVertical: 6 }}
+          >
+            Sign in with Google
           </Button>
 
           <Button
@@ -200,5 +238,10 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: 16,
     borderRadius: 8,
+  },
+  googleBtn: {
+    marginTop: 12,
+    borderRadius: 8,
+    borderColor: '#DB4437',
   },
 });

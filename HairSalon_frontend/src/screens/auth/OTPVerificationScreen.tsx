@@ -1,16 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, TextInput as RNTextInput, View } from 'react-native';
-import { Appbar, Button, HelperText, Text, TextInput, useTheme } from 'react-native-paper';
+import { Appbar, Button, HelperText, Snackbar, Text, TextInput, useTheme } from 'react-native-paper';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/authService';
 
 export const OTPVerificationScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
   const email = route?.params?.email || 'your email';
+  const purpose = route?.params?.purpose || 'register';
 
   const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
   const [error, setError] = useState('');
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   const inputRefs = useRef<Array<RNTextInput | null>>([]);
 
@@ -25,12 +28,16 @@ export const OTPVerificationScreen = ({ navigation, route }: any) => {
   }, [timer]);
 
   const otpMutation = useMutation({
-    mutationFn: (code: string) => authService.verifyOTP(code),
+    mutationFn: (code: string) => authService.verifyEmail(email, code),
     onSuccess: () => {
-      navigation.navigate('ResetPassword');
+      setSnackbarMessage('OTP Verified Successfully! Redirecting to Login...');
+      setSnackbarVisible(true);
+      setTimeout(() => {
+        navigation.navigate('Login');
+      }, 500);
     },
-    onError: () => {
-      setError('Invalid OTP code. Please try again.');
+    onError: (err: any) => {
+      setError(err.message || 'Invalid OTP code. Please try again.');
     },
   });
 
@@ -57,7 +64,12 @@ export const OTPVerificationScreen = ({ navigation, route }: any) => {
       return;
     }
     setError('');
-    otpMutation.mutate(code);
+
+    if (purpose === 'resetPassword') {
+      navigation.navigate('ResetPassword', { email, otp: code });
+    } else {
+      otpMutation.mutate(code);
+    }
   };
 
   const handleResend = () => {
@@ -120,6 +132,14 @@ export const OTPVerificationScreen = ({ navigation, route }: any) => {
           Verify Code
         </Button>
       </View>
+
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={1500}
+      >
+        {snackbarMessage}
+      </Snackbar>
     </View>
   );
 };

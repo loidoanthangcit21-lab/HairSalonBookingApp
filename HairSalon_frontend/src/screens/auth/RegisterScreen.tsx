@@ -14,10 +14,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { authService } from '../../services/authService';
+import { storage } from '../../utils/storage';
+import { useAppDispatch } from '../../store';
+import { setCredentials } from '../../store/authSlice';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+GoogleSignin.configure({
+  webClientId: 'YOUR_WEB_CLIENT_ID',
+});
 
 const registerSchema = z
   .object({
-    fullName: z.string().min(2, 'Full Name is required'),
+    firstName: z.string().min(2, 'Full Name is required'),
+    lastName: z.string().min(2, 'Full Name is required'),
     email: z.string().email('Invalid email address'),
     phone: z.string().min(10, 'Phone number must be at least 10 digits'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
@@ -33,6 +42,8 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export const RegisterScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const dispatch = useAppDispatch();
 
   const {
     control,
@@ -41,7 +52,8 @@ export const RegisterScreen = ({ navigation }: any) => {
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      fullName: '',
+      firstName: '',
+      lastName: '',
       email: '',
       phone: '',
       password: '',
@@ -52,21 +64,52 @@ export const RegisterScreen = ({ navigation }: any) => {
   const registerMutation = useMutation({
     mutationFn: (values: RegisterFormValues) =>
       authService.register({
-        fullName: values.fullName,
+        firstName: values.firstName,
+        lastName: values.lastName,
         email: values.email,
         phone: values.phone,
         password: values.password,
       }),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      setSnackbarMessage('Account registered successfully! Redirecting to OTP Verification...');
       setSnackbarVisible(true);
       setTimeout(() => {
-        navigation.navigate('Login');
-      }, 1500);
+        navigation.navigate('OTPVerification', { email: variables.email, purpose: 'register' });
+      }, 500);
+    },
+    onError: (error: any) => {
+      setSnackbarMessage(error.message || 'Registration failed. Please try again.');
+      setSnackbarVisible(true);
     },
   });
 
   const onSubmit = (values: RegisterFormValues) => {
     registerMutation.mutate(values);
+  };
+
+  const googleLoginMutation = useMutation({
+    mutationFn: (idToken: string) => authService.googleLogin(idToken),
+    onSuccess: async (data) => {
+      await storage.setToken(data.token);
+      await storage.setUser(data.user);
+      dispatch(setCredentials(data));
+    },
+    onError: (error: any) => {
+      setSnackbarMessage(error.message || 'Google Sign-In failed.');
+      setSnackbarVisible(true);
+    },
+  });
+
+  const handleGoogleLogin = async () => {
+    try {
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      if (userInfo.type === 'success' && userInfo.data.idToken) {
+        googleLoginMutation.mutate(userInfo.data.idToken);
+      }
+    } catch (error: any) {
+      console.log('Google Sign-In Error:', error);
+    }
   };
 
   return (
@@ -86,21 +129,41 @@ export const RegisterScreen = ({ navigation }: any) => {
 
         <Controller
           control={control}
-          name="fullName"
+          name="firstName"
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              label="Full Name"
+              label="First name"
               mode="outlined"
               left={<TextInput.Icon icon="account" />}
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              error={!!errors.fullName}
+              error={!!errors.firstName}
             />
           )}
         />
-        {errors.fullName && (
-          <HelperText type="error">{errors.fullName.message}</HelperText>
+        {errors.firstName && (
+          <HelperText type="error">{errors.firstName.message}</HelperText>
+        )}
+
+        <Controller
+          control={control}
+          name="lastName"
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              label="Last Name"
+              mode="outlined"
+              left={<TextInput.Icon icon="account" />}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value}
+              error={!!errors.lastName}
+              style={styles.input}
+            />
+          )}
+        />
+        {errors.lastName && (
+          <HelperText type="error">{errors.lastName.message}</HelperText>
         )}
 
         <Controller
@@ -191,11 +254,23 @@ export const RegisterScreen = ({ navigation }: any) => {
           mode="contained"
           onPress={handleSubmit(onSubmit)}
           loading={registerMutation.isPending}
-          disabled={registerMutation.isPending}
+          disabled={registerMutation.isPending || googleLoginMutation.isPending}
           style={styles.submitBtn}
           contentStyle={{ paddingVertical: 6 }}
         >
           Create Account
+        </Button>
+
+        <Button
+          mode="outlined"
+          icon="google"
+          onPress={handleGoogleLogin}
+          loading={googleLoginMutation.isPending}
+          disabled={registerMutation.isPending || googleLoginMutation.isPending}
+          style={styles.googleBtn}
+          contentStyle={{ paddingVertical: 6 }}
+        >
+          Sign up with Google
         </Button>
       </ScrollView>
 
@@ -204,7 +279,7 @@ export const RegisterScreen = ({ navigation }: any) => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={3000}
       >
-        Account registered successfully! Redirecting to Sign In...
+        {snackbarMessage}
       </Snackbar>
     </View>
   );
@@ -224,5 +299,10 @@ const styles = StyleSheet.create({
   submitBtn: {
     marginTop: 20,
     borderRadius: 8,
+  },
+  googleBtn: {
+    marginTop: 12,
+    borderRadius: 8,
+    borderColor: '#DB4437',
   },
 });

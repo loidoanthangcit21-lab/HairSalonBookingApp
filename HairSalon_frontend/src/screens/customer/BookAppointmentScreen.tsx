@@ -249,7 +249,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.navigate('CustomerMainTabs', { screen: 'MyBookingsTab' });
-      }, 1500);
+      }, 500);
     },
   });
 

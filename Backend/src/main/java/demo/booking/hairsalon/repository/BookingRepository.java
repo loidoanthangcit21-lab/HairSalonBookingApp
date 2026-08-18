@@ -15,6 +15,7 @@ import java.util.UUID;
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByCustomerIdOrderByAppointmentDateDescStartTimeDesc(UUID customerId);
+    List<Booking> findByCustomerIdAndAppointmentDateOrderByStartTimeAsc(UUID customerId, LocalDate date);
     List<Booking> findByStylistIdAndAppointmentDate(UUID stylistId, LocalDate date);
     List<Booking> findByAppointmentDateOrderByStartTimeAsc(LocalDate date);
     List<Booking> findByStylistIdAndStatusIn(UUID stylistId, List<BookingStatus> statuses);

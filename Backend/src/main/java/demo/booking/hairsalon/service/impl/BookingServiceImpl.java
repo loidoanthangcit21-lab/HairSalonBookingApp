@@ -56,6 +56,14 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     }
 
     @Override
+    public List<BookingResponse> getMyTodayBookings(String customerEmail) {
+        User customer = userRepository.findByEmail(customerEmail)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        return bookingRepository.findByCustomerIdAndAppointmentDateOrderByStartTimeAsc(customer.getId(), LocalDate.now())
+                .stream().map(this::mapToResponse).collect(Collectors.toList());
+    }
+
+    @Override
     public BookingResponse getBookingById(UUID id) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));

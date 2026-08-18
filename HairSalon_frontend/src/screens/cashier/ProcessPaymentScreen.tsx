@@ -53,7 +53,7 @@ export const ProcessPaymentScreen = ({ navigation, route }: any) => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.goBack();
-      }, 1500);
+      }, 500);
     },
   });
 

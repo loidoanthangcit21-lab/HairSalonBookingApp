@@ -98,7 +98,7 @@ public class DataInitializer implements CommandLineRunner {
             User customer = new User();
             customer.setFirstName("User");
             customer.setLastName("1");
-            customer.setEmail("khachhang1@example.com");
+            customer.setEmail("user1@example.com");
             customer.setPassword(passwordEncoder.encode("password123"));
             customer.setRole(Role.CUSTOMER);
             customer.setEnabled(true);
@@ -108,7 +108,7 @@ public class DataInitializer implements CommandLineRunner {
             customer = new User();
             customer.setFirstName("User");
             customer.setLastName("2");
-            customer.setEmail("khachhang2@example.com");
+            customer.setEmail("user2@example.com");
             customer.setPassword(passwordEncoder.encode("password123"));
             customer.setRole(Role.CUSTOMER);
             customer.setEnabled(true);

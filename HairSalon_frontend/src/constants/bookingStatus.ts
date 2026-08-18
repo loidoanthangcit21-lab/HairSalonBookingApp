@@ -1,9 +1,9 @@
 export enum BookingStatus {
-  PENDING = 'pending',
-  CONFIRMED = 'confirmed',
-  COMPLETED = 'completed',
-  CANCELED = 'canceled',
-  NO_SHOW = 'no_show',
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELLED',
+  NO_SHOW = 'NO_SHOW',
 }
 
 export const BOOKING_STATUS_LABELS: Record<BookingStatus, string> = {

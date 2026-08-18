@@ -28,8 +28,10 @@ const resetSchema = z
 
 type ResetFormValues = z.infer<typeof resetSchema>;
 
-export const ResetPasswordScreen = ({ navigation }: any) => {
+export const ResetPasswordScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
+  const email = route?.params?.email || '';
+  const otp = route?.params?.otp || '';
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -51,12 +53,12 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
 
   const resetMutation = useMutation({
     mutationFn: (values: ResetFormValues) =>
-      authService.resetPassword(values.newPassword),
+      authService.resetPassword(email, otp, values.newPassword),
     onSuccess: () => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.navigate('Login');
-      }, 1500);
+      }, 500);
     },
   });
 

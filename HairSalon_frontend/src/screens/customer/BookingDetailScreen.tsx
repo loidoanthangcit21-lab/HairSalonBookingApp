@@ -58,7 +58,7 @@ export const BookingDetailScreen = ({ navigation, route }: any) => {
       setSnackbarMessage('Appointment cancelled successfully.');
       setTimeout(() => {
         navigation.goBack();
-      }, 1500);
+      }, 500);
     },
   });
 

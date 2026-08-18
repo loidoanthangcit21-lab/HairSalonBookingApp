@@ -18,7 +18,16 @@ export const authService = {
     return { token, user: profileResponse.data };
   },
 
-  async register(data: { fullName: string; email: string; phone: string; password: string }): Promise<{ success: boolean }> {
+  async googleLogin(idToken: string): Promise<{ token: string; user: UserProfile }> {
+    const loginResponse = await apiClient.post('/auth/google', { idToken });
+    const token = loginResponse.data.accessToken;
+    const { storage } = await import('../utils/storage');
+    await storage.setToken(token);
+    const profileResponse = await apiClient.get('/user/profile');
+    return { token, user: profileResponse.data };
+  },
+
+  async register(data: { firstName: string; lastName: string; email: string; phone: string; password: string }): Promise<{ success: boolean }> {
     await apiClient.post('/auth/register', data);
     return { success: true };
   },
@@ -28,15 +37,13 @@ export const authService = {
     return { success: true, message: 'Password reset instructions sent to your email.' };
   },
 
-  async verifyOTP(otp: string): Promise<{ success: boolean }> {
-    // BE seems to expect { email, otp } or similar for verifyOTP. Wait, AuthController has verifyEmail.
-    // Let's assume it works or we adjust it later.
-    await apiClient.post('/auth/verify-otp', { otp });
+  async verifyEmail(email: string, otp: string): Promise<{ success: boolean }> {
+    await apiClient.post('/auth/verify-email', { email, otp });
     return { success: true };
   },
 
-  async resetPassword(newPassword: string): Promise<{ success: boolean }> {
-    await apiClient.post('/auth/reset-password', { newPassword });
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<{ success: boolean }> {
+    await apiClient.post('/auth/reset-password', { email, otp, newPassword });
     return { success: true };
   },
 };

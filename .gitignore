@@ -32,3 +32,4 @@ build/
 .vscode/
 
 .env
+Backend/HairSalon_Postman_Collection.json

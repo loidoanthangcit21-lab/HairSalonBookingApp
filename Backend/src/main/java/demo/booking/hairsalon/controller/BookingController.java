@@ -40,6 +40,13 @@ public class BookingController {
         return ApiResponse.success(bookingService.getMyBookings(email), "Bookings retrieved successfully", null);
     }
 
+    @GetMapping("/my-today-bookings")
+    @PreAuthorize("hasRole('CUSTOMER')")
+    public ApiResponse<List<BookingResponse>> getMyTodayBookings() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return ApiResponse.success(bookingService.getMyTodayBookings(email), "Today's bookings retrieved successfully", null);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'CASHIER', 'STYLIST')")
     public ApiResponse<BookingResponse> getBookingById(@PathVariable UUID id) {

@@ -1,14 +1,10 @@
-import { ENV } from '../config/env';
+
 import { BookingStatus } from '../constants/bookingStatus';
-import { MOCK_BOOKINGS } from '../mocks/mockBookings';
-import { MOCK_SERVICES, MOCK_STYLISTS } from '../mocks/mockServices';
 import { Booking, CreateBookingDto } from '../types/booking';
 import { ServiceItem, Stylist } from '../types/service';
 import { apiClient } from './apiClient';
 
-const delay = (ms: number) => new Promise((res) => setTimeout(() => res(true), ms));
 
-let localBookingsList: Booking[] = [...MOCK_BOOKINGS];
 
 export const bookingService = {
   async getServices(): Promise<ServiceItem[]> {
@@ -23,6 +19,11 @@ export const bookingService = {
 
   async getMyBookings(): Promise<Booking[]> {
     const response = await apiClient.get('/bookings/my-bookings');
+    return response.data;
+  },
+
+  async getMyTodayBookings(): Promise<Booking[]> {
+    const response = await apiClient.get('/bookings/my-today-bookings');
     return response.data;
   },
 

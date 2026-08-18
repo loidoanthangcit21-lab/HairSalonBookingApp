@@ -208,7 +208,7 @@ export const StaffBookingFormScreen = ({ navigation, route }: any) => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.navigate('CashierMainTabs', { screen: 'TrackingTab' });
-      }, 1500);
+      }, 500);
     },
   });
 

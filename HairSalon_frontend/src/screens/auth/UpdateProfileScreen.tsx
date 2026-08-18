@@ -68,7 +68,7 @@ export const UpdateProfileScreen = ({ navigation }: any) => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.goBack();
-      }, 1200);
+      }, 500);
     },
   });
 

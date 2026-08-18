@@ -54,7 +54,7 @@ export const ChangePasswordScreen = ({ navigation }: any) => {
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.goBack();
-      }, 1500);
+      }, 500);
     },
   });
 

@@ -58,7 +58,7 @@ export const StylistJobDetailScreen = ({ navigation, route }: any) => {
         setSnackbarMessage('Service completed successfully!');
         setTimeout(() => {
           navigation.goBack();
-        }, 1500);
+        }, 500);
       }
     },
   });

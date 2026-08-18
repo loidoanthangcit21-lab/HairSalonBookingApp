@@ -12,6 +12,7 @@ public interface BookingService {
     // Customer
     BookingResponse createBooking(String customerEmail, BookingRequest request);
     List<BookingResponse> getMyBookings(String customerEmail);
+    List<BookingResponse> getMyTodayBookings(String customerEmail);
     BookingResponse getBookingById(UUID id);
     BookingResponse updateBooking(String customerEmail, UUID bookingId, BookingRequest request);
     void cancelBooking(String customerEmail, UUID bookingId);
