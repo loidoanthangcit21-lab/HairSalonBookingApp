@@ -18,18 +18,16 @@ export const AppNavigator = () => {
       return <AuthNavigator />;
     }
 
-    switch (user.role) {
-      case UserRole.CASHIER:
+    switch (user?.role) {
       case UserRole.ADMIN:
       case 'ADMIN' as any:
+      case 'CASHIER' as any:
         return <CashierNavigator />;
       case UserRole.CUSTOMER:
       default:
         return <CustomerNavigator />;
     }
-
   };
 
   return <NavigationContainer>{renderRoleNavigator()}</NavigationContainer>;
 };
-

@@ -27,7 +27,7 @@ public enum ErrorCode {
     EXPERT_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "Expert is not available at this time"),
     CUSTOMER_HAS_OVERLAPPING_BOOKING(HttpStatus.BAD_REQUEST, "You already have an appointment scheduled at this time slot"),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found"),
-
+    QR_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "QR payment code has expired. Please refresh the QR code."),
     UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
 
     private final HttpStatus status;

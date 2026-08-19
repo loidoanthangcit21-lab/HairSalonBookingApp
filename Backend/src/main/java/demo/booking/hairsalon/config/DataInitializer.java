@@ -153,7 +153,7 @@ public class DataInitializer implements CommandLineRunner {
                         .category(haircutCat)
                         .name("Classic Gentleman Haircut")
                         .description("Includes precision haircut, shampoo wash, scalp massage, and style finish")
-                        .price(new BigDecimal("25.00"))
+                        .price(new BigDecimal("15000"))
                         .imageUrl("https://images.unsplash.com/photo-1599351431202-1e0f0137899a")
                         .isActive(true)
                         .build());

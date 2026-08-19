@@ -3,11 +3,11 @@ package demo.booking.hairsalon.controller;
 import demo.booking.hairsalon.common.ApiResponse;
 import demo.booking.hairsalon.model.dto.request.BookingRequest;
 import demo.booking.hairsalon.model.dto.response.BookingResponse;
+import demo.booking.hairsalon.model.enums.BookingStatus;
 import demo.booking.hairsalon.service.BookingService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,7 +34,6 @@ public class BookingController {
         return ApiResponse.success(bookingService.cashierCreateBooking(request), "Walk-in booking created successfully", null);
     }
 
-
     @GetMapping("/my-bookings")
     @PreAuthorize("hasRole('CUSTOMER')")
     public ApiResponse<List<BookingResponse>> getMyBookings() {
@@ -47,7 +46,6 @@ public class BookingController {
     public ApiResponse<List<BookingResponse>> getOccupiedSlots() {
         return ApiResponse.success(bookingService.getAllActiveBookings(), "Occupied slots retrieved successfully", null);
     }
-
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CUSTOMER', 'ADMIN')")
@@ -70,6 +68,13 @@ public class BookingController {
         return ApiResponse.success(null, "Booking cancelled successfully", null);
     }
 
+    @PatchMapping("/{id}/check-in")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ApiResponse<Void> checkInBooking(@PathVariable UUID id) {
+        bookingService.updateBookingStatus(id, BookingStatus.CHECK_IN);
+        return ApiResponse.success(null, "Customer checked-in successfully", null);
+    }
+
     @PostMapping("/{id}/process-payment")
     @PreAuthorize("hasRole('ADMIN')")
     public ApiResponse<Void> markBookingAsPaid(@PathVariable UUID id) {
@@ -85,7 +90,7 @@ public class BookingController {
 
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> updateBookingStatus(@PathVariable UUID id, @RequestBody java.util.Map<String, demo.booking.hairsalon.model.enums.BookingStatus> body) {
+    public ApiResponse<Void> updateBookingStatus(@PathVariable UUID id, @RequestBody java.util.Map<String, BookingStatus> body) {
         bookingService.updateBookingStatus(id, body.get("status"));
         return ApiResponse.success(null, "Booking status updated successfully", null);
     }

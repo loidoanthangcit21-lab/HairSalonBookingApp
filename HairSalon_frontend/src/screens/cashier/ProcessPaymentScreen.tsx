@@ -1,55 +1,65 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import {
+  ActivityIndicator,
   Appbar,
   Button,
   Card,
   Chip,
   Divider,
   List,
+  SegmentedButtons,
   Snackbar,
   Surface,
   Text,
   useTheme,
 } from 'react-native-paper';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { bookingService } from '../../services/bookingService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { paymentService, InvoiceDto } from '../../services/paymentService';
 import { Booking } from '../../types/booking';
 
 export const ProcessPaymentScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
   const queryClient = useQueryClient();
   const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'BANK_TRANSFER' | 'QR'>('QR');
+  const [secondsLeft, setSecondsLeft] = useState<number>(600);
 
-  const booking: Booking = route?.params?.booking || {
-    id: 'bk_1',
-    bookingCode: 'BK-8892',
-    customerName: 'Alex Johnson',
-    customerPhone: '0901234567',
-    stylistName: 'David Miller',
-    services: [
-      {
-        id: 'srv_1',
-        title: 'Executive Gentleman Haircut',
-        price: 25,
-        durationMinutes: 45,
-      },
-    ],
-    bookingDate: '2026-08-09',
-    timeSlot: '09:00 AM',
-    status: 'completed',
-    totalAmount: 25,
-    paymentStatus: 'UNPAID',
-  };
+  const booking: Booking = route?.params?.booking || {};
 
-  const subtotal = booking.totalAmount;
-  const tax = Math.round(subtotal * 0.1);
-  const grandTotal = subtotal + tax;
+  const { data: invoice, isLoading, isError, refetch } = useQuery<InvoiceDto>({
+    queryKey: ['invoice', booking.id],
+    queryFn: () => paymentService.getInvoiceByBookingId(booking.id),
+    enabled: !!booking.id,
+  });
+
+  useEffect(() => {
+    if (invoice?.remainingSeconds !== undefined) {
+      setSecondsLeft(invoice.remainingSeconds);
+    }
+  }, [invoice]);
+
+  useEffect(() => {
+    if (secondsLeft <= 0) return;
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [secondsLeft]);
 
   const paymentMutation = useMutation({
-    mutationFn: () => bookingService.processPayment(booking.id),
+    mutationFn: () => {
+      if (!invoice) throw new Error('Invoice unavailable');
+      return paymentService.processPayment({
+        invoiceId: invoice.id,
+        amount: invoice.totalAmount,
+        paymentMethod: paymentMethod,
+        transactionCode: `TXN-${Date.now()}`,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todayBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['myBookings'] });
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.goBack();
@@ -57,102 +67,135 @@ export const ProcessPaymentScreen = ({ navigation, route }: any) => {
     },
   });
 
+  const formatTimer = (totalSec: number) => {
+    const mins = Math.floor(totalSec / 60);
+    const secs = totalSec % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const totalAmount = invoice ? invoice.totalAmount : (booking.totalAmount || 0);
+  const isQrExpired = secondsLeft <= 0;
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
-        <Appbar.Content title="Cash Checkout & Bill" />
+        <Appbar.Content title="Thanh Toán & Hóa Đơn (Admin)" />
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.container}>
         {/* Customer Header */}
         <Surface style={styles.headerSurface} elevation={1}>
           <Text variant="titleMedium" style={styles.codeText}>
-            Booking Reference #{booking.bookingCode}
+            Mã Đơn Đặt #{booking.bookingCode || 'BK-XXXX'}
           </Text>
           <Text variant="headlineSmall" style={styles.customerName}>
-            {booking.customerName}
+            {invoice?.customerName || booking.customerName || 'Khách Vãng Lai'}
           </Text>
           <Text variant="bodySmall" style={{ opacity: 0.7 }}>
-            Phone: {booking.customerPhone} • Stylist: {booking.stylistName}
+            Thời gian: {invoice?.bookingTime || `${booking.bookingDate} ${booking.timeSlot}`}
           </Text>
         </Surface>
 
-        {/* Itemized Receipt Breakdown */}
+        {/* Payment Method Selector */}
+        <Surface style={styles.methodSurface} elevation={1}>
+          <Text variant="titleMedium" style={styles.sectionTitle}>
+            Phương Thức Thanh Toán
+          </Text>
+          <SegmentedButtons
+            value={paymentMethod}
+            onValueChange={(val) => setPaymentMethod(val as any)}
+            buttons={[
+              { value: 'QR', label: 'Mã QR VietQR', icon: 'qrcode' },
+              { value: 'BANK_TRANSFER', label: 'Chuyển Khoản', icon: 'bank' },
+              { value: 'CASH', label: 'Tiền Mặt', icon: 'cash' },
+            ]}
+            style={{ marginTop: 8 }}
+          />
+        </Surface>
+
+        {/* Dynamic VietQR Preview for QR / BANK_TRANSFER */}
+        {(paymentMethod === 'QR' || paymentMethod === 'BANK_TRANSFER') && (
+          <Card mode="outlined" style={styles.qrCard}>
+            <Card.Content style={{ alignItems: 'center' }}>
+              <Chip icon="clock-outline" style={{ marginBottom: 12, backgroundColor: isQrExpired ? theme.colors.errorContainer : theme.colors.primaryContainer }}>
+                {isQrExpired ? '⚠️ Mã QR đã hết hạn thanh toán' : `Hết hạn sau: ${formatTimer(secondsLeft)}`}
+              </Chip>
+
+              {isLoading ? (
+                <ActivityIndicator style={{ marginVertical: 30 }} size="large" />
+              ) : isQrExpired ? (
+                <View style={{ alignItems: 'center', marginVertical: 20 }}>
+                  <Text variant="bodyLarge" style={{ color: theme.colors.error, fontWeight: 'bold', marginBottom: 12 }}>
+                    Mã QR này đã quá thời gian chờ (10 phút)
+                  </Text>
+                  <Button mode="contained-tonal" icon="refresh" onPress={() => refetch()}>
+                    Làm Mới Mã QR
+                  </Button>
+                </View>
+              ) : invoice?.qrCodeUrl ? (
+                <Image
+                  source={{ uri: invoice.qrCodeUrl }}
+                  style={styles.qrImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text variant="bodyMedium" style={{ color: theme.colors.error, marginVertical: 20 }}>
+                  Không thể tải mã QR
+                </Text>
+              )}
+
+              <Text variant="bodySmall" style={styles.qrNote}>
+                Quét mã VietQR trên bằng App Ngân hàng (Agribank, MB, VCB...) hoặc Ví điện tử (MoMo, ZaloPay).
+              </Text>
+            </Card.Content>
+          </Card>
+        )}
+
+        {/* Itemized Invoice Details */}
         <Card mode="outlined" style={styles.card}>
           <Card.Content>
             <Text variant="titleMedium" style={styles.sectionTitle}>
-              Receipt Breakdown
+              Chi Tiết Hóa Đơn
             </Text>
-            {booking.services.map((srv, idx) => (
-              <List.Item
-                key={idx}
-                title={srv.title}
-                description="Standard Service Rate"
-                right={() => (
-                  <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
-                    ${srv.price}
-                  </Text>
-                )}
-              />
-            ))}
-            <Divider style={{ marginVertical: 12 }} />
-
-            <View style={styles.summaryRow}>
-              <Text variant="bodyMedium">Subtotal:</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
-                ${subtotal}
-              </Text>
-            </View>
-
-            <View style={styles.summaryRow}>
-              <Text variant="bodyMedium">Tax & Service Fee (10%):</Text>
-              <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>
-                ${tax}
-              </Text>
-            </View>
-
+            <List.Item
+              title={invoice?.serviceName || 'Dịch vụ làm tóc'}
+              description={`Chuyên gia thực hiện: ${invoice?.expertName || 'Salon Expert'}`}
+              right={() => (
+                <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
+                  {totalAmount.toLocaleString('vi-VN')} VNĐ
+                </Text>
+              )}
+            />
             <Divider style={{ marginVertical: 12 }} />
 
             <View style={styles.summaryRow}>
               <Text variant="titleMedium" style={{ fontWeight: 'bold' }}>
-                Total Cash Amount Due:
+                Tổng Tiền Phải Thanh Toán:
               </Text>
               <Text
                 variant="headlineMedium"
                 style={{ color: theme.colors.primary, fontWeight: 'bold' }}
               >
-                ${grandTotal}
+                {totalAmount.toLocaleString('vi-VN')} VNĐ
               </Text>
             </View>
           </Card.Content>
         </Card>
-
-        {/* Cash Payment Indicator */}
-        <Surface style={styles.paymentMethodCard} elevation={1}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Chip icon="cash" style={{ backgroundColor: theme.colors.primaryContainer }}>
-              Cash Checkout Only
-            </Chip>
-          </View>
-          <Text variant="bodySmall" style={{ marginTop: 8, opacity: 0.8 }}>
-            Customer will pay ${grandTotal} in cash directly to the cashier at the front counter.
-          </Text>
-        </Surface>
       </ScrollView>
 
-      {/* Sticky Bottom Action Button */}
-      <Surface elevation={2} style={styles.bottomBar}>
+      {/* Sticky Bottom Action Button (Admin Only) */}
+      <Surface elevation={3} style={styles.bottomBar}>
         <Button
           mode="contained"
-          icon="cash-check"
+          icon="check-circle"
           onPress={() => paymentMutation.mutate()}
           loading={paymentMutation.isPending}
-          disabled={paymentMutation.isPending}
+          disabled={paymentMutation.isPending || isLoading || (paymentMethod === 'QR' && isQrExpired)}
           style={styles.submitBtn}
-          contentStyle={{ paddingVertical: 6 }}
+          contentStyle={{ paddingVertical: 8 }}
         >
-          Complete & Process Cash Bill (${grandTotal})
+          Xác Nhận Đã Nhận Tiền ({totalAmount.toLocaleString('vi-VN')} VNĐ)
         </Button>
       </Surface>
 
@@ -161,7 +204,7 @@ export const ProcessPaymentScreen = ({ navigation, route }: any) => {
         onDismiss={() => setSnackbarVisible(false)}
         duration={2000}
       >
-        Cash payment processed & bill completed!
+        Đã xác nhận thanh toán & hoàn tất đơn hàng thành công!
       </Snackbar>
     </View>
   );
@@ -170,10 +213,10 @@ export const ProcessPaymentScreen = ({ navigation, route }: any) => {
 const styles = StyleSheet.create({
   container: {
     padding: 16,
-    paddingBottom: 90,
+    paddingBottom: 110,
   },
   headerSurface: {
-    padding: 20,
+    padding: 16,
     borderRadius: 16,
     marginBottom: 16,
     alignItems: 'center',
@@ -186,9 +229,31 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 4,
   },
+  methodSurface: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
   card: {
     borderRadius: 16,
     marginBottom: 16,
+  },
+  qrCard: {
+    borderRadius: 16,
+    marginBottom: 16,
+    paddingVertical: 12,
+  },
+  qrImage: {
+    width: 240,
+    height: 240,
+    borderRadius: 12,
+    marginVertical: 8,
+  },
+  qrNote: {
+    textAlign: 'center',
+    opacity: 0.7,
+    marginTop: 8,
+    paddingHorizontal: 12,
   },
   sectionTitle: {
     fontWeight: 'bold',
@@ -197,12 +262,8 @@ const styles = StyleSheet.create({
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginVertical: 4,
-  },
-  paymentMethodCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 16,
   },
   bottomBar: {
     position: 'absolute',
@@ -212,6 +273,6 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   submitBtn: {
-    borderRadius: 8,
+    borderRadius: 10,
   },
 });
