@@ -109,8 +109,6 @@ export const OTPVerificationScreen = ({ navigation, route }: any) => {
     if (isRegistration) {
       otpMutation.mutate(code);
     } else {
-      // For Forgot Password flow, navigate to ResetPassword screen with email & OTP.
-      // Backend validates the OTP code when submitting new password via /api/auth/reset-password.
       navigation.navigate('ResetPassword', { email, otp: code });
     }
   };

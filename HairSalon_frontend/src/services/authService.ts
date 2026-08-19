@@ -10,7 +10,6 @@ export const authService = {
     }
     const loginResponse = await apiClient.post('/auth/login', { email, password });
     
-    // loginResponse.data is unwrapped by interceptor to be { accessToken, refreshToken }
     const token = loginResponse.data.accessToken;
     
     const { storage } = await import('../utils/storage');
@@ -48,7 +47,6 @@ export const authService = {
     if (ENV.USE_MOCK_DATA) {
       return { success: true };
     }
-    // Backend endpoint is /auth/verify-email expecting { email, otp }
     await apiClient.post('/auth/verify-email', { otp, email: email || '' });
     return { success: true };
   },
@@ -57,7 +55,6 @@ export const authService = {
     if (ENV.USE_MOCK_DATA) {
       return { success: true };
     }
-    // Backend endpoint is /auth/reset-password expecting { email, otp, newPassword }
     await apiClient.post('/auth/reset-password', { newPassword, email: email || '', otp: otp || '' });
     return { success: true };
   },

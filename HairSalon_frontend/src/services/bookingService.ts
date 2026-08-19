@@ -98,7 +98,6 @@ export const bookingService = {
 
 
   async getStylists(): Promise<Stylist[]> {
-    // Backend endpoint is /experts
     const response = await apiClient.get('/experts');
     const rawData = Array.isArray(response.data) ? response.data : [];
     return rawData.map(transformStylist);

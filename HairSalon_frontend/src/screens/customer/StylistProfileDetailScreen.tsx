@@ -15,7 +15,7 @@ export const StylistProfileDetailScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
   const stylist = route?.params?.stylist;
 
-  if (!stylist) return null; // Safe guard if stylist is missing
+  if (!stylist) return null;
 
 
   return (

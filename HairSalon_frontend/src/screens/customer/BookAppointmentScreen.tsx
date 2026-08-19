@@ -67,13 +67,11 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [openDatePicker, setOpenDatePicker] = useState(false);
 
-  // occupiedSlots = all active bookings system-wide (for expert availability)
   const { data: occupiedBookings } = useQuery({
     queryKey: ['occupiedSlots'],
     queryFn: () => bookingService.getOccupiedSlots(),
   });
 
-  // myBookings = this customer's own bookings (for customer-overlap check)
   const { data: allBookings } = useQuery({
     queryKey: ['myBookings'],
     queryFn: () => bookingService.getMyBookings(),
@@ -89,10 +87,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
     queryFn: () => bookingService.getStylists(),
   });
 
-  /**
-   * isStylistBusy — checks occupiedSlots (system-wide active bookings) by expert UUID.
-   * NEVER match by name to avoid false positives with similar names.
-   */
   const isStylistBusy = React.useCallback(
     (stylistId: string, dateStr: string, slotStr: string): boolean => {
       if (!occupiedBookings) return false;
@@ -113,7 +107,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   const toggleServiceSelection = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
       if (prev.includes(serviceId)) {
-        if (prev.length === 1) return prev; // Keep at least 1 selected
+        if (prev.length === 1) return prev;
         return prev.filter((id) => id !== serviceId);
       } else {
         return [...prev, serviceId];
@@ -180,7 +174,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
 
   const totalPrice = chosenServices.reduce((sum, s) => sum + s.price, 0);
 
-  // 1. Filter stylists matching the categories of chosen services
   const selectedServiceCategoryIds = React.useMemo(() => {
     const ids = new Set<string>();
     const names = new Set<string>();
@@ -208,7 +201,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
 
   const chosenStylist = (stylists || []).find((st) => st.id === selectedStylistId);
 
-  // Helper to pick a free stylist randomly from matching stylists
   const pickRandomFreeStylist = React.useCallback(
     (dateStr: string, slotStr: string): string | null => {
       const candidates = (matchingStylists.length > 0 ? matchingStylists : stylists || []).filter(
@@ -223,7 +215,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
 
   const handleSelectTimeSlot = (slot: string) => {
     setSelectedTimeSlot(slot);
-    // If user chose Any Stylist or no specific stylist yet, auto-assign a free expert randomly
     if (!selectedStylistId || selectedStylistId === 'ANY_STYLIST') {
       const assignedId = pickRandomFreeStylist(selectedDate, slot);
       if (assignedId) {
@@ -251,7 +242,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
       if (isSlotInPast(dateStr, slotStr)) return false;
       if (isCustomerBusyAtSlot(dateStr, slotStr)) return false;
       if (!selectedStylistId || selectedStylistId === 'ANY_STYLIST') {
-        // At least 1 candidate stylist must be free
         const candidates = matchingStylists.length > 0 ? matchingStylists : stylists || [];
         return candidates.some((st) => !isStylistBusy(st.id, dateStr, slotStr));
       }

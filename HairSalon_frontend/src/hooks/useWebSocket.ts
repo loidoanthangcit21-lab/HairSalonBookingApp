@@ -1,14 +1,3 @@
-/**
- * useWebSocket.ts – Custom hook that:
- *   1. Connects to the STOMP WebSocket when the user is logged in.
- *   2. On receiving a notification event → invalidates ['notifications'] cache.
- *   3. On receiving a booking-update event → invalidates ['myBookings'],
- *      ['todayBookings'], ['staffCreatedBookings'], ['occupiedSlots'] caches.
- *   4. Disconnects automatically on logout.
- *
- * Mount this hook once in AppNavigator (or the authenticated root layout)
- * so it stays alive for the entire authenticated session.
- */
 
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -27,7 +16,6 @@ export const useWebSocket = () => {
       return;
     }
 
-    // Get the stored JWT token and connect
     const initWs = async () => {
       const token = await storage.getToken();
       if (!token) return;
@@ -35,7 +23,7 @@ export const useWebSocket = () => {
     };
     initWs();
 
-    // Register listeners
+
     const unsubNotif = wsService.onNotification(() => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     });

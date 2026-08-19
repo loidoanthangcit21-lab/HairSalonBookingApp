@@ -45,7 +45,7 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
   const toggleSelection = (serviceId: string) => {
     setSelectedIds((prev) => {
       if (prev.includes(serviceId)) {
-        if (prev.length === 1) return prev; // Keep at least 1
+        if (prev.length === 1) return prev;
         return prev.filter((id) => id !== serviceId);
       } else {
         return [...prev, serviceId];

@@ -49,7 +49,6 @@ export const RegisterScreen = ({ navigation }: any) => {
   });
 
   const onSubmit = (values: RegisterFormValues) => {
-    // Navigate immediately to OTPVerification screen, passing registration values to execute asynchronously
     navigation.navigate('OTPVerification', {
       email: values.email,
       registrationValues: values,

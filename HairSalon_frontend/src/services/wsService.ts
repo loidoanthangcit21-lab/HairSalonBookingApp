@@ -1,13 +1,3 @@
-/**
- * wsService.ts – STOMP over WebSocket singleton for real-time events.
- *
- * Connects to the Spring backend at ws://10.0.2.2:8081/ws using @stomp/stompjs.
- * Subscribes to:
- *   /user/queue/notifications      → pushes live notifications for logged-in user
- *   /user/queue/booking-updates    → pushes live booking status changes
- *   /topic/occupied-slots          → broadcast when any booking is placed/updated
- */
-
 import 'fast-text-encoding';
 import { Client, IMessage } from '@stomp/stompjs';
 import { ENV } from '../config/env';
@@ -38,33 +28,30 @@ class WsService {
       onConnect: () => {
         this.connected = true;
 
-        // 1. User specific notifications
         this.client?.subscribe('/user/queue/notifications', (msg: IMessage) => {
           try {
             const data = JSON.parse(msg.body);
             this.notificationCallbacks.forEach((cb) => cb(data));
           } catch (e) {
-            // ignore
+
           }
         });
 
-        // 2. User specific booking updates
         this.client?.subscribe('/user/queue/booking-updates', (msg: IMessage) => {
           try {
             const data = JSON.parse(msg.body);
             this.bookingUpdateCallbacks.forEach((cb) => cb(data));
           } catch (e) {
-            // ignore
+
           }
         });
 
-        // 3. Broadcast topic for all occupied slot changes
         this.client?.subscribe('/topic/occupied-slots', (msg: IMessage) => {
           try {
             const data = JSON.parse(msg.body);
             this.bookingUpdateCallbacks.forEach((cb) => cb(data));
           } catch (e) {
-            // ignore
+            
           }
         });
       },

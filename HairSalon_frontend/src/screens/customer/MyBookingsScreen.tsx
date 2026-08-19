@@ -248,7 +248,7 @@ export const MyBookingsScreen = ({ navigation, route }: any) => {
           </>
         )}
 
-        {/* ── MODE 2: DEDICATED FULL UPCOMING SCREEN ───────────────────────── */}
+        {/*MODE 2: DEDICATED FULL UPCOMING SCREEN */}
         {viewMode === 'all_upcoming' && (
           <View>
             <Text variant="bodyMedium" style={{ opacity: 0.7, marginBottom: 12 }}>
@@ -317,7 +317,7 @@ export const MyBookingsScreen = ({ navigation, route }: any) => {
           </View>
         )}
 
-        {/* ── MODE 3: DEDICATED FULL HISTORY SCREEN ────────────────────────── */}
+        {/* MODE 3: DEDICATED FULL HISTORY SCREEN */}
         {viewMode === 'all_history' && (
           <View>
             {/* Filter Chips */}

@@ -99,7 +99,6 @@ export const LoginScreen = ({ navigation }: any) => {
     } catch (err: any) {
       console.log('Google Sign-In Error:', err);
       if (err?.code === '12501' || err?.code === 'SIGN_IN_CANCELLED') {
-        // User cancelled Google sign in dialog
         return;
       }
       if (err?.code === '10' || err?.toString().includes('DEVELOPER_ERROR')) {

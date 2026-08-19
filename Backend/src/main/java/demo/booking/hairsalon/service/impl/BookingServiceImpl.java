@@ -39,7 +39,7 @@ public class BookingServiceImpl implements BookingService {
     private final ExpertRepository expertRepository;
     private final NotificationService notificationService;
 
-    // ─────────────────────────────── Customer ────────────────────────────────
+    // Customer
 
     @Override
     @Transactional
@@ -112,14 +112,14 @@ public class BookingServiceImpl implements BookingService {
             notificationService.sendBookingUpdate(customer, response);
             notificationService.sendNotification(
                     customer,
-                    "Booking Cancelled ❌",
+                    "Booking Cancelled",
                     "Your appointment has been cancelled.",
                     "BOOKING_CANCELLED"
             );
         }
     }
 
-    // ─────────────────────────── Receptionist/Admin ──────────────────────────
+    //Admin
 
     @Override
     public List<BookingResponse> getTodayBookings() {
@@ -160,7 +160,7 @@ public class BookingServiceImpl implements BookingService {
             notificationService.sendBookingUpdate(customer, response);
             notificationService.sendNotification(
                     customer,
-                    "Payment Received 💳",
+                    "Payment Received",
                     "Payment received for your appointment #" +
                             (booking.getId() != null ? booking.getId().toString().substring(0, 8) : ""),
                     "BOOKING_COMPLETED"
@@ -196,29 +196,29 @@ public class BookingServiceImpl implements BookingService {
             String type;
             switch (newStatus) {
                 case CONFIRMED -> {
-                    title = "Appointment Confirmed 🎉";
+                    title = "Appointment Confirmed";
                     message = "Your appointment on " +
                             (booking.getStartAt() != null ? booking.getStartAt().toLocalDate() : "") +
                             " has been confirmed!";
                     type = "BOOKING_CONFIRMED";
                 }
                 case CANCELLED -> {
-                    title = "Appointment Cancelled ❌";
+                    title = "Appointment Cancelled";
                     message = "Your appointment has been cancelled.";
                     type = "BOOKING_CANCELLED";
                 }
                 case COMPLETED -> {
-                    title = "Appointment Completed ✨";
+                    title = "Appointment Completed";
                     message = "Thank you for visiting! Your session is completed.";
                     type = "BOOKING_COMPLETED";
                 }
                 case CHECK_IN -> {
-                    title = "Checked In ✂️";
+                    title = "Checked In ";
                     message = "Welcome to the salon! You have checked in.";
                     type = "BOOKING_CONFIRMED";
                 }
                 default -> {
-                    title = "Booking Status Updated 🔔";
+                    title = "Booking Status Updated";
                     message = "Your appointment status has been updated to " + newStatus.name();
                     type = "BOOKING_CONFIRMED";
                 }
@@ -227,7 +227,7 @@ public class BookingServiceImpl implements BookingService {
         }
     }
 
-    // ──────────────────────────────── Stylist ────────────────────────────────
+    //Stylist
 
     @Override
     public List<BookingResponse> getStylistAssignedJobs(String stylistEmail) {
@@ -244,7 +244,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
 
-    // ────────────────────────────── Shared/Internal ──────────────────────────
+    //  Shared/Internal
 
     @Override
     public List<BookingResponse> getAllActiveBookings() {
@@ -256,10 +256,10 @@ public class BookingServiceImpl implements BookingService {
                 .collect(Collectors.toList());
     }
 
-    // ────────────────────────── Private helpers ──────────────────────────────
+    //Private helpers
 
     private BookingResponse processBookingCreation(User customer, BookingRequest request) {
-        // 1. Resolve expert (with pessimistic write lock for race-condition safety)
+        // Resolve expert (with pessimistic write lock for race-condition safety)
         Expert expert = null;
         UUID expertId = request.expertId() != null ? request.expertId() : request.stylistId();
         if (expertId != null) {
@@ -270,21 +270,21 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-        // 2. Resolve service
+        //Resolve service
         if (request.serviceIds() == null || request.serviceIds().isEmpty()) {
             throw new BusinessException(ErrorCode.SERVICE_NOT_FOUND);
         }
         Service service = serviceRepository.findById(request.serviceIds().get(0))
                 .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
 
-        // 3. Parse date/time
+        //Parse date/time
         LocalDate parsedDate = LocalDate.parse(request.bookingDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         LocalTime parsedTime = LocalTime.parse(request.timeSlot().toUpperCase(), DateTimeFormatter.ofPattern("hh:mm a", Locale.US));
         LocalDateTime startAt = LocalDateTime.of(parsedDate, parsedTime);
         LocalDateTime endAt = startAt.plusMinutes(45);
 
 
-        // 4. Customer overlap check (same customer, same time window)
+        //Customer overlap check (same customer, same time window)
         if (customer != null) {
             List<Booking> customerOverlaps = bookingRepository.findCustomerOverlappingBookings(
                     customer.getId(), startAt, endAt);
@@ -293,7 +293,7 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-        // 5. Expert overlap check (same expert, same time window)
+        //Expert overlap check (same expert, same time window)
         if (expert != null) {
             List<Booking> expertOverlaps = bookingRepository.findOverlappingBookings(
                     expert.getId(), startAt, endAt);
@@ -302,7 +302,6 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-        // 6. Build and persist
         Booking booking = Booking.builder()
                 .user(customer)
                 .service(service)
@@ -322,14 +321,14 @@ public class BookingServiceImpl implements BookingService {
 
         BookingResponse response = mapToResponse(savedBooking);
 
-        // 7. Send real-time events to customer
+        //Send real-time events to customer
         if (customer != null) {
             String serviceName = service.getName();
             String dateStr = request.bookingDate() + " at " + request.timeSlot();
             notificationService.sendBookingUpdate(customer, response);
             notificationService.sendNotification(
                     customer,
-                    "Booking Placed Successfully 📅",
+                    "Booking Placed Successfully",
                     "Your booking for " + serviceName + " on " + dateStr + " is currently PENDING.",
                     "BOOKING_CONFIRMED"
             );
@@ -372,11 +371,11 @@ public class BookingServiceImpl implements BookingService {
                 dateStr,
                 timeStr,
                 booking.getStatus() != null ? booking.getStatus().name() : null,
-                "UNPAID",          // paymentStatus – always UNPAID until markAsPaid
+                "UNPAID",
                 service != null ? service.getPrice().doubleValue() : 0.0,
                 booking.getCancelReason(),
-                false,             // createdByStaff field not stored in entity yet
-                "Online",          // creationType field not stored in entity yet
+                false,
+                "Online",
                 createdStr,
                 serviceResponses
         );
