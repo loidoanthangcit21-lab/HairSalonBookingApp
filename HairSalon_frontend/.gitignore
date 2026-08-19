@@ -1,0 +1,92 @@
+# Document files (Word, PDF, Excel, PowerPoint, Text dumps)
+*.docx
+*.doc
+*.pdf
+*.xlsx
+*.xls
+*.pptx
+*.ppt
+doc_content.txt
+
+# Editor & IDE configurations
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Environment configurations & local secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Operating System & Temp files
+.DS_Store
+Thumbs.db
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Xcode / iOS
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+
+# Android / IntelliJ / Kotlin
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+.kotlin/
+
+# Node.js & Dependencies
+node_modules/
+
+# Fastlane
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Bundle artifact
+*.jsbundle
+
+# Ruby / CocoaPods
+.bundle/
+**/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro
+.metro-health-check*
+
+# Testing & Coverage
+/coverage
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions

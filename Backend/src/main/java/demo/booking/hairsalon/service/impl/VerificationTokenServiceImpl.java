@@ -25,7 +25,8 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     public EmailVerificationToken create(User user) {
         EmailVerificationToken token = new EmailVerificationToken();
         token.setUser(user);
-        token.setToken(UUID.randomUUID().toString());
+        String otp = String.format("%06d", new java.util.Random().nextInt(999999));
+        token.setToken(otp);
         token.setExpiresAt(LocalDateTime.now()
                 .plus(Duration.ofMillis(tokenProperties.getVerificationExpiration())));
         return repository.save(token);
@@ -34,6 +35,11 @@ public class VerificationTokenServiceImpl implements VerificationTokenService {
     @Override
     public EmailVerificationToken getByToken(String token) {
         return repository.findByToken(token).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_VERIFICATION_TOKEN));
+    }
+
+    @Override
+    public EmailVerificationToken getByUser(User user) {
+        return repository.findByUser(user).orElseThrow(() -> new BusinessException(ErrorCode.INVALID_VERIFICATION_TOKEN));
     }
 
     @Override

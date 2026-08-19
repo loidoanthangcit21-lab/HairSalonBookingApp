@@ -1,6 +1,5 @@
 package demo.booking.hairsalon.service.impl;
 
-
 import demo.booking.hairsalon.exception.BusinessException;
 import demo.booking.hairsalon.model.dto.GoogleUserInfo;
 import demo.booking.hairsalon.model.dto.request.*;
@@ -18,15 +17,13 @@ import demo.booking.hairsalon.security.SecurityUtils;
 import demo.booking.hairsalon.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
 
-import java.security.AuthProvider;
 import java.util.UUID;
-
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +38,18 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordResetTokenService passwordResetTokenService;
     private final GoogleAuthService googleAuthService;
 
+    private String formatFullName(String firstName, String lastName) {
+        String fName = firstName != null ? firstName.trim() : "";
+        String lName = lastName != null && !"null".equalsIgnoreCase(lastName.trim()) ? lastName.trim() : "";
+        if (!fName.isEmpty() && !lName.isEmpty()) {
+            return fName + " " + lName;
+        } else if (!fName.isEmpty()) {
+            return fName;
+        } else if (!lName.isEmpty()) {
+            return lName;
+        }
+        return "User";
+    }
 
     @Transactional
     @Override
@@ -48,24 +57,35 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.EMAIL_IS_EXISTED);
         }
-        User user = new User();
-        user.setFirstName(request.firstName());
-        user.setLastName(request.lastName());
-        user.setEmail(request.email());
-        user.setPassword(passwordEncoder.encode(request.password()));
-        user.setRole(Role.CUSTOMER);
-        user.setEnabled(false);
+        String fullName = request.fullName() != null && !request.fullName().isBlank() ? request.fullName().trim() : "User";
+        String phone = (request.phone() != null && !request.phone().isBlank()) ? request.phone().trim() : "";
+        User user = User.builder()
+                .fullName(fullName)
+                .email(request.email())
+                .phone(phone)
+                .password(passwordEncoder.encode(request.password()))
+                .role(Role.CUSTOMER)
+                .enabled(false)
+                .build();
         userRepository.save(user);
         EmailVerificationToken token = verificationTokenService.create(user);
         emailService.sendVerificationEmail(user.getEmail(), token.getToken());
     }
 
+
+
     @Transactional
     @Override
-    public void verifyEmail(String tokenValue) {
-        EmailVerificationToken token = verificationTokenService.getByToken(tokenValue);
+    public void verifyEmail(VerifyEmailRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        EmailVerificationToken token = verificationTokenService.getByUser(user);
+        
+        if (!token.getToken().equals(request.otp())) {
+            throw new BusinessException(ErrorCode.INVALID_VERIFICATION_TOKEN);
+        }
+        
         verificationTokenService.validate(token);
-        User user = token.getUser();
         user.setEnabled(true);
         userRepository.save(user);
         verificationTokenService.delete(token);
@@ -97,7 +117,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void logout(LogoutRequest request) {
-
         RefreshToken refreshToken = refreshTokenService.validate(request.refreshToken());
         refreshTokenService.revoke(refreshToken);
     }
@@ -107,18 +126,26 @@ public class AuthServiceImpl implements AuthService {
     public void forgotPassword(ForgotPasswordRequest request) {
         userRepository.findByEmail(request.email()).ifPresent(user -> {
             PasswordResetToken token = passwordResetTokenService.create(user);
-                    emailService.sendPasswordResetEmail(
-                            user.getEmail(),
-                            token.getToken()
-                   );
-                });
+            emailService.sendPasswordResetEmail(
+                    user.getEmail(),
+                    token.getToken()
+            );
+        });
     }
 
     @Override
     @Transactional
     public void resetPassword(ResetPasswordRequest request) {
-        PasswordResetToken token = passwordResetTokenService.validate(request.token());
-        User user = token.getUser();
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        PasswordResetToken token = passwordResetTokenService.getByUser(user);
+        
+        if (!token.getToken().equals(request.otp())) {
+            throw new BusinessException(ErrorCode.PASSWORD_RESET_TOKEN_NOT_FOUND);
+        }
+        
+        passwordResetTokenService.validate(token.getToken());
+        
         if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
             throw new BusinessException(ErrorCode.PASSWORD_SAME_AS_OLD);
         }
@@ -152,14 +179,12 @@ public class AuthServiceImpl implements AuthService {
             }
             verificationTokenService.deleteByUser(user);
             EmailVerificationToken token = verificationTokenService.create(user);
-
-            emailService.sendVerificationEmail(user.getEmail(), token.getToken());});
+            emailService.sendVerificationEmail(user.getEmail(), token.getToken());
+        });
     }
 
     public LoginResponse googleLogin(GoogleLoginRequest request) {
-
         GoogleUserInfo googleUser = googleAuthService.verifyIdToken(request.idToken());
-
         User user = userRepository.findByEmail(googleUser.email()).orElseGet(() -> createGoogleUser(googleUser));
 
         if (!user.isEnabled()) {
@@ -168,20 +193,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         String accessToken = jwtService.generateAccessToken(user);
-
         String refreshToken = jwtService.generateRefreshToken(user);
 
         return new LoginResponse(accessToken, refreshToken);
     }
 
     private User createGoogleUser(GoogleUserInfo googleUser) {
-        User user = new User();
-        user.setEmail(googleUser.email());
-        user.setFirstName(googleUser.firstName());
-        user.setLastName(googleUser.lastName());
-        user.setPassword(passwordEncoder.encode(UUID.randomUUID().toString()));
-        user.setEnabled(true);
-        user.setRole(Role.CUSTOMER);
+        String fullName = formatFullName(googleUser.firstName(), googleUser.lastName());
+        User user = User.builder()
+                .email(googleUser.email())
+                .fullName(fullName)
+                .phone("")
+                .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .enabled(true)
+                .role(Role.CUSTOMER)
+                .build();
         return userRepository.save(user);
     }
+
 }

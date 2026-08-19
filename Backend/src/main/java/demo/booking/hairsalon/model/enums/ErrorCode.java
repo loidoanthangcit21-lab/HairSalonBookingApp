@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 public enum ErrorCode {
 
-    EMAIL_IS_EXISTED(HttpStatus.BAD_REQUEST, "Email is already exist"),
+    EMAIL_IS_EXISTED(HttpStatus.BAD_REQUEST, "Email already exists"),
     EMAIL_ALREADY_VERIFIED(HttpStatus.BAD_REQUEST, "Email is already verified"),
     PASSWORD_SAME_AS_OLD(HttpStatus.BAD_REQUEST, "New password cannot be the same as the old password"),
     WRONG_CURRENT_PASSWORD(HttpStatus.BAD_REQUEST, "Current password is incorrect"),
@@ -19,7 +19,16 @@ public enum ErrorCode {
     PASSWORD_RESET_TOKEN_EXPIRED(HttpStatus.BAD_REQUEST, "Password reset token has expired"),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "User not found"),
     INVALID_GOOGLE_TOKEN(HttpStatus.UNAUTHORIZED, "Invalid Google ID token"),
-    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required");
+    UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication is required"),
+    SERVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "Service not found"),
+    EXPERT_NOT_FOUND(HttpStatus.NOT_FOUND, "Expert not found"),
+    BOOKING_NOT_FOUND(HttpStatus.NOT_FOUND, "Booking not found"),
+    INVALID_BOOKING_TIME(HttpStatus.BAD_REQUEST, "Invalid booking time"),
+    EXPERT_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "Expert is not available at this time"),
+    CUSTOMER_HAS_OVERLAPPING_BOOKING(HttpStatus.BAD_REQUEST, "You already have an appointment scheduled at this time slot"),
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found"),
+
+    UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
 
     private final HttpStatus status;
     private final String message;

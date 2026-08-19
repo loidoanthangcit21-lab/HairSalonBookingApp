@@ -9,6 +9,8 @@ public interface PasswordResetTokenService {
 
     PasswordResetToken validate(String token);
 
+    PasswordResetToken getByUser(User user);
+
     void delete(PasswordResetToken token);
 
 }

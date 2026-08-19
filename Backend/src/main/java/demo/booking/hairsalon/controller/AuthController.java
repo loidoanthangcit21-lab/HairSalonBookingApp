@@ -23,9 +23,9 @@ public class AuthController {
         return ApiResponse.success(null, "Registration successful. Please check your email for verification instructions.", null);
     }
 
-    @GetMapping("/verify-email")
-    public ApiResponse<Void> verifyEmail(@RequestParam String token) {
-        authService.verifyEmail(token);
+    @PostMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request);
         return ApiResponse.success(null, "Email verified successfully.", null);
     }
 

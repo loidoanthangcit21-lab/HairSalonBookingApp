@@ -1,0 +1,38 @@
+import { BookingStatus } from '../constants/bookingStatus';
+import { ServiceItem } from './service';
+
+export interface Booking {
+  id: string;
+  bookingCode: string;
+  customerId?: string;
+  customerName: string;
+  customerPhone: string;
+  stylistId: string;
+  stylistName?: string;
+  expertId?: string;
+  expertName?: string;
+  services: ServiceItem[];
+  bookingDate: string; // YYYY-MM-DD
+  timeSlot: string; // HH:mm
+  status: BookingStatus;
+  totalAmount: number;
+  notes?: string;
+  createdByStaff?: boolean;
+  creationType?: 'Walk-in' | 'Phone Call' | 'Online' | string;
+  createdAt?: string;
+  paymentStatus?: 'UNPAID' | 'PAID_CASH' | string;
+}
+
+export interface CreateBookingDto {
+  serviceIds: string[];
+  stylistId?: string;
+  expertId?: string;
+  bookingDate: string;
+  timeSlot: string;
+  notes?: string;
+  customerName?: string;
+  customerPhone?: string;
+  createdByStaff?: boolean;
+  creationType?: 'Walk-in' | 'Phone Call' | string;
+}
+

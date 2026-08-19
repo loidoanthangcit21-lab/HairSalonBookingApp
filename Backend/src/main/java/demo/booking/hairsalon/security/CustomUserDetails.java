@@ -20,17 +20,20 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+        String roleName = user.getRole() != null ? user.getRole().name() : "CUSTOMER";
+        return List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
     }
 
     @Override
     public String getPassword() {
         return user.getPassword();
     }
+
     @Override
     public String getUsername() {
-        return user.getEmail();
+        return user.getEmail() != null ? user.getEmail() : user.getPhone();
     }
+
     @Override
     public boolean isEnabled() {
         return user.isEnabled();
