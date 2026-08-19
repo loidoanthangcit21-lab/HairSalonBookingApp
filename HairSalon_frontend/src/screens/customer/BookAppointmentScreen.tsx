@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -66,6 +67,13 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   const [snackbarVisible, setSnackbarVisible] = useState(false);
   const [openDatePicker, setOpenDatePicker] = useState(false);
 
+  // occupiedSlots = all active bookings system-wide (for expert availability)
+  const { data: occupiedBookings } = useQuery({
+    queryKey: ['occupiedSlots'],
+    queryFn: () => bookingService.getOccupiedSlots(),
+  });
+
+  // myBookings = this customer's own bookings (for customer-overlap check)
   const { data: allBookings } = useQuery({
     queryKey: ['myBookings'],
     queryFn: () => bookingService.getMyBookings(),
@@ -81,36 +89,26 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
     queryFn: () => bookingService.getStylists(),
   });
 
+  /**
+   * isStylistBusy — checks occupiedSlots (system-wide active bookings) by expert UUID.
+   * NEVER match by name to avoid false positives with similar names.
+   */
   const isStylistBusy = React.useCallback(
     (stylistId: string, dateStr: string, slotStr: string): boolean => {
-      if (!allBookings) return false;
-      return allBookings.some(
+      if (!occupiedBookings) return false;
+      return occupiedBookings.some(
         (b) =>
           b.id !== route?.params?.rescheduleBookingId &&
-          (b.status === BookingStatus.PENDING || b.status === BookingStatus.CONFIRMED) &&
-          (b.stylistId === stylistId ||
-            b.stylistName?.toLowerCase()?.includes(stylistId.toLowerCase()) ||
-            stylistId.toLowerCase().includes(b.stylistName?.toLowerCase() || '')) &&
+          (b.status === BookingStatus.PENDING || b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.CHECK_IN) &&
+          (b.stylistId === stylistId || b.expertId === stylistId) &&
           b.bookingDate === dateStr &&
           b.timeSlot === slotStr
       );
     },
-    [allBookings, route?.params?.rescheduleBookingId]
+    [occupiedBookings, route?.params?.rescheduleBookingId]
   );
 
-  React.useEffect(() => {
-    if (stylists && stylists.length > 0) {
-      const currentIsBusy = isStylistBusy(selectedStylistId, selectedDate, selectedTimeSlot);
-      if (currentIsBusy) {
-        const availableStylist = stylists.find(
-          (st) => !isStylistBusy(st.id, selectedDate, selectedTimeSlot)
-        );
-        if (availableStylist) {
-          setSelectedStylistId(availableStylist.id);
-        }
-      }
-    }
-  }, [selectedDate, selectedTimeSlot, stylists, isStylistBusy, selectedStylistId]);
+
 
   const toggleServiceSelection = (serviceId: string) => {
     setSelectedServiceIds((prev) => {
@@ -145,12 +143,14 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
     return slotMinutes <= currentMinutes;
   }, []);
 
+  const { data: fetchedCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => bookingService.getCategories(),
+  });
+
   const categories = [
     { id: 'all', name: 'All Services' },
-    { id: 'cat_1', name: 'Haircuts' },
-    { id: 'cat_2', name: 'Styling & Perm' },
-    { id: 'cat_3', name: 'Coloring' },
-    { id: 'cat_4', name: 'Spa & Care' },
+    ...(fetchedCategories || []),
   ];
 
   const timeSlots = [
@@ -179,13 +179,93 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
   );
 
   const totalPrice = chosenServices.reduce((sum, s) => sum + s.price, 0);
-  const totalDuration = chosenServices.reduce((sum, s) => sum + (s.durationMinutes || 30), 0);
+
+  // 1. Filter stylists matching the categories of chosen services
+  const selectedServiceCategoryIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    const names = new Set<string>();
+    chosenServices.forEach((s) => {
+      if (s.categoryId) ids.add(s.categoryId);
+      if (s.categoryName) names.add(s.categoryName.toLowerCase());
+    });
+    return { ids: Array.from(ids), names: Array.from(names) };
+  }, [chosenServices]);
+
+  const matchingStylists = React.useMemo(() => {
+    if (!stylists) return [];
+    if (selectedServiceCategoryIds.ids.length === 0 && selectedServiceCategoryIds.names.length === 0) {
+      return stylists;
+    }
+    return stylists.filter((st) => {
+      if (!st.categories || st.categories.length === 0) return true;
+      return st.categories.some(
+        (c) =>
+          selectedServiceCategoryIds.ids.includes(c.id) ||
+          selectedServiceCategoryIds.names.includes(c.name.toLowerCase())
+      );
+    });
+  }, [stylists, selectedServiceCategoryIds]);
 
   const chosenStylist = (stylists || []).find((st) => st.id === selectedStylistId);
 
+  // Helper to pick a free stylist randomly from matching stylists
+  const pickRandomFreeStylist = React.useCallback(
+    (dateStr: string, slotStr: string): string | null => {
+      const candidates = (matchingStylists.length > 0 ? matchingStylists : stylists || []).filter(
+        (st) => !isStylistBusy(st.id, dateStr, slotStr)
+      );
+      if (candidates.length === 0) return null;
+      const randomIndex = Math.floor(Math.random() * candidates.length);
+      return candidates[randomIndex].id;
+    },
+    [matchingStylists, stylists, isStylistBusy]
+  );
+
+  const handleSelectTimeSlot = (slot: string) => {
+    setSelectedTimeSlot(slot);
+    // If user chose Any Stylist or no specific stylist yet, auto-assign a free expert randomly
+    if (!selectedStylistId || selectedStylistId === 'ANY_STYLIST') {
+      const assignedId = pickRandomFreeStylist(selectedDate, slot);
+      if (assignedId) {
+        setSelectedStylistId(assignedId);
+      }
+    }
+  };
+
+  const isCustomerBusyAtSlot = React.useCallback(
+    (dateStr: string, slotStr: string): boolean => {
+      if (!allBookings) return false;
+      return allBookings.some(
+        (b) =>
+          b.id !== route?.params?.rescheduleBookingId &&
+          (b.status === BookingStatus.PENDING || b.status === BookingStatus.CONFIRMED || b.status === BookingStatus.CHECK_IN) &&
+          b.bookingDate === dateStr &&
+          b.timeSlot === slotStr
+      );
+    },
+    [allBookings, route?.params?.rescheduleBookingId]
+  );
+
+  const isSlotAvailable = React.useCallback(
+    (dateStr: string, slotStr: string): boolean => {
+      if (isSlotInPast(dateStr, slotStr)) return false;
+      if (isCustomerBusyAtSlot(dateStr, slotStr)) return false;
+      if (!selectedStylistId || selectedStylistId === 'ANY_STYLIST') {
+        // At least 1 candidate stylist must be free
+        const candidates = matchingStylists.length > 0 ? matchingStylists : stylists || [];
+        return candidates.some((st) => !isStylistBusy(st.id, dateStr, slotStr));
+      }
+      return !isStylistBusy(selectedStylistId, dateStr, slotStr);
+    },
+    [isSlotInPast, isCustomerBusyAtSlot, selectedStylistId, matchingStylists, stylists, isStylistBusy]
+  );
+
+
   const filteredServices = (services || []).filter((s) => {
     if (selectedCategory === 'all') return true;
-    return s.categoryId === selectedCategory;
+    const catObj = (fetchedCategories || []).find((c) => c.id === selectedCategory);
+    const catName = catObj ? catObj.name.toLowerCase() : selectedCategory.toLowerCase();
+    return s.categoryId === selectedCategory || s.categoryName?.toLowerCase() === catName;
   });
 
   const rescheduleBookingId = route?.params?.rescheduleBookingId;
@@ -218,19 +298,17 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
     route?.params?.initialNotes,
   ]);
 
-  const handleOpenCatalog = () => {
-    navigation.navigate('BrowseServices', {
-      isSelectionMode: true,
-      selectedServiceIds,
-      returnScreen: 'BookAppointment',
-    });
-  };
-
   const submitMutation = useMutation({
     mutationFn: () => {
+      let finalStylistId = selectedStylistId;
+      if (!finalStylistId || finalStylistId === 'ANY_STYLIST') {
+        const assignedId = pickRandomFreeStylist(selectedDate, selectedTimeSlot);
+        finalStylistId = assignedId || (stylists && stylists.length > 0 ? stylists[0].id : '');
+      }
+
       const dto = {
         serviceIds: selectedServiceIds,
-        stylistId: selectedStylistId,
+        stylistId: finalStylistId,
         bookingDate: selectedDate,
         timeSlot: selectedTimeSlot,
         notes,
@@ -244,6 +322,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myBookings'] });
+      queryClient.invalidateQueries({ queryKey: ['occupiedSlots'] });
       queryClient.invalidateQueries({ queryKey: ['todayBookings'] });
       queryClient.invalidateQueries({ queryKey: ['staffCreatedBookings'] });
       setSnackbarVisible(true);
@@ -251,7 +330,25 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
         navigation.navigate('CustomerMainTabs', { screen: 'MyBookingsTab' });
       }, 1500);
     },
+    onError: (error: any) => {
+      const msg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to place booking. Please try again.';
+      const isSlotConflict =
+        msg.includes('EXPERT_NOT_AVAILABLE') ||
+        msg.toLowerCase().includes('already booked') ||
+        msg.toLowerCase().includes('unavailable');
+      Alert.alert(
+        isSlotConflict ? 'Time Slot Unavailable ⚠️' : 'Booking Failed ❌',
+        isSlotConflict
+          ? 'The selected stylist is already booked for this date and time slot. Please select another time or stylist.'
+          : msg
+      );
+    },
+
   });
+
 
   const handleBack = () => {
     if (currentStep > 1) {
@@ -267,8 +364,8 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
 
   const stepsList = [
     { number: 1, title: 'Service' },
-    { number: 2, title: 'Date & Time' },
-    { number: 3, title: 'Stylist' },
+    { number: 2, title: 'Stylist' },
+    { number: 3, title: 'Date & Time' },
     { number: 4, title: 'Confirm' },
   ];
 
@@ -283,9 +380,9 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
               : currentStep === 1
               ? 'Select Services'
               : currentStep === 2
-                ? 'Choose Date & Time'
+                ? 'Choose Specialist'
                 : currentStep === 3
-                  ? 'Choose Specialist'
+                  ? 'Choose Date & Time'
                   : 'Confirm Booking'
           }
         />
@@ -342,24 +439,12 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
         {currentStep === 1 && (
           <View>
             <View style={styles.stepHeaderBox}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text variant="titleMedium" style={styles.stepHeaderTitle}>
-                    What haircut experience are you looking for?
-                  </Text>
-                  <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
-                    Select one or multiple services to get started.
-                  </Text>
-                </View>
-                <Button
-                  mode="text"
-                  compact
-                  onPress={handleOpenCatalog}
-                  style={{ marginLeft: 8 }}
-                >
-                  Browse Catalog
-                </Button>
-              </View>
+              <Text variant="titleMedium" style={styles.stepHeaderTitle}>
+                What haircut experience are you looking for?
+              </Text>
+              <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
+                Select one or multiple services to get started.
+              </Text>
             </View>
 
             {/* Category Chips */}
@@ -411,10 +496,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
                       <Text variant="bodySmall" numberOfLines={2} style={{ opacity: 0.7, marginVertical: 4 }}>
                         {srv.description}
                       </Text>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 4 }}>
-                        <Text variant="bodySmall" style={{ opacity: 0.8 }}>
-                          ⏱️ {srv.durationMinutes} min
-                        </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
                         <Text variant="titleMedium" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
                           ${srv.price}
                         </Text>
@@ -436,15 +518,132 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
           </View>
         )}
 
-        {/* STEP 2: CHOOSE DATE & TIME */}
+        {/* STEP 2: CHOOSE SPECIALIST / STYLIST */}
         {currentStep === 2 && (
+          <View>
+            <View style={styles.stepHeaderBox}>
+              <Text variant="titleMedium" style={styles.stepHeaderTitle}>
+                Choose Your Hair Specialist
+              </Text>
+              <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
+                Stylists available for your selected services category.
+              </Text>
+            </View>
+
+            {/* Any Available Stylist / Random Auto-Assign Option */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedStylistId('ANY_STYLIST')}
+              style={[
+                styles.wizardCard,
+                {
+                  marginBottom: 12,
+                  borderWidth: selectedStylistId === 'ANY_STYLIST' || !selectedStylistId ? 2 : 1,
+                  borderColor: selectedStylistId === 'ANY_STYLIST' || !selectedStylistId ? theme.colors.primary : '#E0E0E0',
+                  backgroundColor: selectedStylistId === 'ANY_STYLIST' || !selectedStylistId
+                    ? theme.colors.primaryContainer + '20'
+                    : theme.colors.surface,
+                  borderRadius: 16,
+                },
+              ]}
+            >
+              <View style={{ flexDirection: 'row', padding: 12, alignItems: 'center' }}>
+                <Avatar.Icon size={48} icon="shuffle-variant" style={{ backgroundColor: theme.colors.primaryContainer }} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text variant="titleSmall" style={{ fontWeight: 'bold' }}>
+                    Any Available Stylist (Auto-Assign)
+                  </Text>
+                  <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
+                    Let salon assign any available expert for your chosen slot.
+                  </Text>
+                </View>
+                <Chip
+                  compact
+                  mode={selectedStylistId === 'ANY_STYLIST' || !selectedStylistId ? 'flat' : 'outlined'}
+                  selected={selectedStylistId === 'ANY_STYLIST' || !selectedStylistId}
+                  showSelectedCheck={false}
+                  style={{ marginLeft: 8 }}
+                >
+                  {selectedStylistId === 'ANY_STYLIST' || !selectedStylistId ? 'Selected' : 'Select'}
+                </Chip>
+              </View>
+            </TouchableOpacity>
+
+            <Text variant="titleSmall" style={{ fontWeight: 'bold', marginBottom: 8, marginTop: 8 }}>
+              Specific Experts ({matchingStylists.length})
+            </Text>
+
+            {matchingStylists.map((st) => {
+              const isSelected = selectedStylistId === st.id;
+              return (
+                <TouchableOpacity
+                  key={st.id}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedStylistId(st.id)}
+                  style={[
+                    styles.wizardCard,
+                    {
+                      marginBottom: 8,
+                      borderWidth: 1,
+                      borderColor: isSelected ? theme.colors.primary : '#E0E0E0',
+                      backgroundColor: isSelected
+                        ? theme.colors.primaryContainer + '20'
+                        : theme.colors.surface,
+                      borderRadius: 16,
+                    },
+                    isSelected && {
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <View style={{ flexDirection: 'row', padding: 10, alignItems: 'center' }}>
+                    <Avatar.Image size={48} source={{ uri: st.avatarUrl }} />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text
+                        variant="titleSmall"
+                        style={{ fontWeight: 'bold', color: theme.colors.onSurface }}
+                      >
+                        {st.fullName}
+                      </Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
+                        <Chip
+                          icon="content-cut"
+                          compact
+                          style={{ flexShrink: 1, maxWidth: '100%' }}
+                        >
+                          <Text variant="labelSmall" numberOfLines={1} style={{ flexShrink: 1 }}>
+                            {st.specialty || 'Master Stylist'}
+                          </Text>
+                        </Chip>
+                      </View>
+                    </View>
+                    <Chip
+                      compact
+                      mode={isSelected ? 'flat' : 'outlined'}
+                      selected={isSelected}
+                      showSelectedCheck={false}
+                      style={{ marginLeft: 8 }}
+                    >
+                      {isSelected ? 'Selected' : 'Select'}
+                    </Chip>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {/* STEP 3: CHOOSE DATE & TIME */}
+        {currentStep === 3 && (
           <View>
             <View style={styles.stepHeaderBox}>
               <Text variant="titleMedium" style={styles.stepHeaderTitle}>
                 Select Booking Date & Time
               </Text>
               <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
-                Pick an available slot that suits your schedule best.
+                {chosenStylist
+                  ? `Pick an available slot for ${chosenStylist.fullName}.`
+                  : 'Pick an available slot that suits your schedule best.'}
               </Text>
             </View>
 
@@ -505,31 +704,34 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
             </Text>
             <View style={styles.timeGrid}>
               {timeSlots.map((slot) => {
-                const disabled = isSlotInPast(selectedDate, slot);
+                const available = isSlotAvailable(selectedDate, slot);
                 const isSelected = selectedTimeSlot === slot;
                 return (
                   <Chip
                     key={slot}
                     mode={isSelected ? 'flat' : 'outlined'}
                     selected={isSelected}
-                    disabled={disabled}
-                    onPress={() => !disabled && setSelectedTimeSlot(slot)}
+                    disabled={!available}
+                    onPress={() => available && handleSelectTimeSlot(slot)}
                     showSelectedCheck={false}
                     style={[
                       styles.timeChip,
-                      disabled && { opacity: 0.4, backgroundColor: theme.colors.surfaceDisabled },
+                      !available && { opacity: 0.4, backgroundColor: theme.colors.surfaceDisabled },
                     ]}
                   >
-                    {slot} {disabled ? '(Passed)' : ''}
+                    {slot} {!available ? '(Busy)' : ''}
                   </Chip>
                 );
               })}
             </View>
 
-            {/* Selected Service Preview Box */}
+            {/* Selected Service & Stylist Preview Box */}
             <Card mode="outlined" style={[styles.wizardCard, { marginTop: 16 }]}>
               <Card.Content>
-                <Text variant="labelMedium" style={{ opacity: 0.6 }}>Selected Services ({chosenServices.length})</Text>
+                <Text variant="labelMedium" style={{ opacity: 0.6 }}>Summary Preview</Text>
+                <Text variant="bodyMedium" style={{ fontWeight: 'bold', marginTop: 4, color: theme.colors.primary }}>
+                  Stylist: {chosenStylist ? chosenStylist.fullName : 'Any Available Stylist (Auto-Assigned)'}
+                </Text>
                 {chosenServices.map((srv) => (
                   <View key={srv.id} style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
                     <Text variant="bodyMedium" style={{ fontWeight: 'bold' }}>{srv.title}</Text>
@@ -541,94 +743,6 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
           </View>
         )}
 
-        {/* STEP 3: CHOOSE SPECIALIST / STYLIST */}
-        {currentStep === 3 && (
-          <View>
-            <View style={styles.stepHeaderBox}>
-              <Text variant="titleMedium" style={styles.stepHeaderTitle}>
-                Choose Your Hair Specialist
-              </Text>
-              <Text variant="bodySmall" style={{ opacity: 0.7, marginTop: 2 }}>
-                Select a master stylist that fits your desired hair style.
-              </Text>
-            </View>
-
-            {(stylists || []).map((st) => {
-              const isSelected = selectedStylistId === st.id;
-              const isBusy = isStylistBusy(st.id, selectedDate, selectedTimeSlot);
-              return (
-                <TouchableOpacity
-                  key={st.id}
-                  activeOpacity={0.8}
-                  disabled={isBusy}
-                  onPress={() => !isBusy && setSelectedStylistId(st.id)}
-                  style={[
-                    styles.wizardCard,
-                    {
-                      marginBottom: 8,
-                      borderWidth: 1,
-                      borderColor: isSelected ? theme.colors.primary : '#E0E0E0',
-                      backgroundColor: isBusy
-                        ? '#F5F5F5'
-                        : isSelected
-                        ? theme.colors.primaryContainer + '20'
-                        : theme.colors.surface,
-                      borderRadius: 16,
-                      opacity: isBusy ? 0.55 : 1,
-                    },
-                    isSelected && {
-                      borderWidth: 2,
-                    },
-                  ]}
-                >
-                  <View style={{ flexDirection: 'row', padding: 10, alignItems: 'center' }}>
-                    <Avatar.Image size={48} source={{ uri: st.avatarUrl }} />
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text
-                        variant="titleSmall"
-                        style={{
-                          fontWeight: 'bold',
-                          color: isBusy ? '#757575' : theme.colors.onSurface,
-                        }}
-                      >
-                        {st.fullName}
-                      </Text>
-                      <Chip
-                        icon="content-cut"
-                        compact
-                        style={{ marginVertical: 2, alignSelf: 'flex-start', maxWidth: '100%' }}
-                      >
-                        <Text variant="labelSmall" numberOfLines={1} style={{ maxWidth: 110 }}>
-                          {st.specialty}
-                        </Text>
-                      </Chip>
-                    </View>
-                    {isBusy ? (
-                      <Chip
-                        compact
-                        icon="clock-alert-outline"
-                        style={{ backgroundColor: '#FFEBEE', marginLeft: 8 }}
-                        textStyle={{ color: '#D32F2F', fontWeight: 'bold', fontSize: 11 }}
-                      >
-                        Not Available
-                      </Chip>
-                    ) : (
-                      <Chip
-                        compact
-                        mode={isSelected ? 'flat' : 'outlined'}
-                        selected={isSelected}
-                        showSelectedCheck={false}
-                        style={{ marginLeft: 8 }}
-                      >
-                        {isSelected ? 'Selected' : 'Select'}
-                      </Chip>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
 
         {/* STEP 4: FINAL CONFIRMATION */}
         {currentStep === 4 && (
@@ -646,20 +760,20 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
               <Card.Content>
                 <List.Item
                   title="Selected Services"
-                  description={`${chosenServices.map((s) => s.title).join(', ')} (${totalDuration} mins)`}
+                  description={chosenServices.map((s) => s.title).join(', ')}
                   left={(p) => <List.Icon {...p} icon="scissors-cutting" />}
-                />
-                <Divider />
-                <List.Item
-                  title="Date & Time Slot"
-                  description={`${selectedDate} at ${selectedTimeSlot}`}
-                  left={(p) => <List.Icon {...p} icon="calendar-clock" />}
                 />
                 <Divider />
                 <List.Item
                   title="Assigned Stylist"
                   description={chosenStylist?.fullName || 'Not selected'}
                   left={(p) => <List.Icon {...p} icon="account-star" />}
+                />
+                <Divider />
+                <List.Item
+                  title="Date & Time Slot"
+                  description={`${selectedDate} at ${selectedTimeSlot}`}
+                  left={(p) => <List.Icon {...p} icon="calendar-clock" />}
                 />
                 <Divider />
                 <List.Item
@@ -708,7 +822,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
             style={styles.continueBtn}
             disabled={
               (currentStep === 1 && selectedServiceIds.length === 0) ||
-              (currentStep === 3 && !selectedStylistId)
+              (currentStep === 2 && !selectedStylistId)
             }
           >
             Continue
@@ -726,6 +840,7 @@ export const BookAppointmentScreen = ({ navigation, route }: any) => {
           </Button>
         )}
       </Surface>
+
 
       <Snackbar
         visible={snackbarVisible}

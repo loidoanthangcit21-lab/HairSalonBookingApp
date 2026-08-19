@@ -30,10 +30,14 @@ apiClient.interceptors.response.use(
     }
     return response;
   },
-  (error) => {
+  async (error) => {
+    if (error.response?.status === 401) {
+      await storage.clearAll();
+    }
     if (error.response && error.response.data && error.response.data.message) {
       return Promise.reject(new Error(error.response.data.message));
     }
     return Promise.reject(error);
   }
 );
+

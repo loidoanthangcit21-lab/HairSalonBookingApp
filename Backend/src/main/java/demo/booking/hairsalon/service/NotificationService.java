@@ -1,5 +1,6 @@
 package demo.booking.hairsalon.service;
 
+import demo.booking.hairsalon.model.dto.response.BookingResponse;
 import demo.booking.hairsalon.model.dto.response.NotificationResponse;
 import demo.booking.hairsalon.model.entity.User;
 
@@ -10,4 +11,6 @@ public interface NotificationService {
     List<NotificationResponse> getUserNotifications(String email);
     void markAsRead(UUID id, String email);
     void sendNotification(User user, String title, String message, String type);
+    void sendBookingUpdate(User user, BookingResponse booking);
 }
+

@@ -35,14 +35,14 @@ public class GoogleAuthServiceImpl implements GoogleAuthService {
 
     @Override
     public GoogleUserInfo verifyIdToken(String idToken) {
-
         try {
-
             GoogleIdToken googleIdToken = verifier.verify(idToken);
+
 
             if (googleIdToken == null) {
                 throw new BusinessException(ErrorCode.INVALID_GOOGLE_TOKEN);
             }
+
 
             GoogleIdToken.Payload payload =
                     googleIdToken.getPayload();

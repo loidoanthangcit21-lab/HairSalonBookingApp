@@ -23,7 +23,12 @@ export const NotificationPanelScreen = ({ navigation }: any) => {
   const { data: notifications, isLoading, refetch } = useQuery({
     queryKey: ['notifications'],
     queryFn: () => userService.getNotifications(),
+    refetchInterval: 5000,
   });
+
+
+
+
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => userService.markNotificationAsRead(id),
@@ -35,6 +40,13 @@ export const NotificationPanelScreen = ({ navigation }: any) => {
     },
   });
 
+  const unreadCount = (notifications || []).filter((n) => !n.read).length;
+
+  const markAllAsRead = () => {
+    const unreadItems = (notifications || []).filter((n) => !n.read);
+    unreadItems.forEach((n) => markAsReadMutation.mutate(n.id));
+  };
+
   const handlePress = (item: NotificationItem) => {
     if (!item.read) {
       markAsReadMutation.mutate(item.id);
@@ -45,16 +57,21 @@ export const NotificationPanelScreen = ({ navigation }: any) => {
     filter === 'unread' ? !item.read : true
   );
 
-  if (isLoading) {
+  if (isLoading && !notifications) {
     return <LoadingOverlay message="Loading notifications..." />;
   }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
         <Appbar.BackAction onPress={() => navigation.goBack()} />
         <Appbar.Content title="Notifications" />
+        {unreadCount > 0 && (
+          <Appbar.Action icon="check-all" onPress={markAllAsRead} />
+        )}
       </Appbar.Header>
+
 
       <View style={styles.filterContainer}>
         <SegmentedButtons

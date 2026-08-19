@@ -24,14 +24,19 @@ import {
   BookingStatus,
 } from '../../constants/bookingStatus';
 
-export const MyBookingsScreen = ({ navigation }: any) => {
+type ViewMode = 'main' | 'all_upcoming' | 'all_history';
+
+export const MyBookingsScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
-  const [activeTab, setActiveTab] = useState<'upcoming' | 'history'>('upcoming');
+  const [viewMode, setViewMode] = useState<ViewMode>(
+    route?.params?.initialView === 'history' ? 'all_history' : 'main'
+  );
   const [historyFilter, setHistoryFilter] = useState<string>('all');
 
   const { data: bookings, isLoading } = useQuery({
     queryKey: ['myBookings'],
     queryFn: () => bookingService.getMyBookings(),
+    refetchInterval: 5000,
   });
 
   const allBookings = bookings || [];
@@ -54,90 +59,62 @@ export const MyBookingsScreen = ({ navigation }: any) => {
     return true;
   });
 
-  if (isLoading) {
+  if (isLoading && !bookings) {
     return <LoadingOverlay message="Fetching your appointment history..." />;
   }
+
+  const handleHeaderBack = () => {
+    if (viewMode !== 'main') {
+      setViewMode('main');
+    } else {
+      navigation.navigate('CustomerMainTabs', { screen: 'HomeTab' });
+    }
+  };
+
+  const getPageTitle = () => {
+    if (viewMode === 'all_upcoming') return 'Upcoming Appointments';
+    if (viewMode === 'all_history') return 'Booking History';
+    return 'My Appointments';
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
-        <Appbar.BackAction
-          onPress={() => navigation.navigate('CustomerMainTabs', { screen: 'HomeTab' })}
-        />
-        <Appbar.Content title="My Appointments" />
-        <Appbar.Action
-          icon="bell-outline"
-          onPress={() => navigation.navigate('NotificationPanel')}
-        />
+        <Appbar.BackAction onPress={handleHeaderBack} />
+        <Appbar.Content title={getPageTitle()} />
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Banner Section */}
-        <View style={styles.bannerSection}>
-          <Text variant="headlineSmall" style={styles.bannerTitle}>
-            Your Beauty Schedule ✨
-          </Text>
-          <Text variant="bodyMedium" style={styles.bannerSubtitle}>
-            Stay on top of your appointments and never miss your glow time.
-          </Text>
-        </View>
-
-        {/* Tab Toggle (Upcoming vs History) */}
-        <View style={styles.toggleRow}>
-          <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              activeTab === 'upcoming' && { backgroundColor: theme.colors.primary },
-            ]}
-            onPress={() => setActiveTab('upcoming')}
-          >
-            <Icon
-              source="calendar-clock"
-              size={18}
-              color={activeTab === 'upcoming' ? theme.colors.onPrimary : theme.colors.onSurfaceVariant}
-            />
-            <Text
-              variant="labelLarge"
-              style={[
-                styles.toggleText,
-                { color: activeTab === 'upcoming' ? theme.colors.onPrimary : theme.colors.onSurfaceVariant },
-              ]}
-            >
-              Upcoming
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.toggleBtn,
-              activeTab === 'history' && { backgroundColor: theme.colors.primary },
-            ]}
-            onPress={() => setActiveTab('history')}
-          >
-            <Icon
-              source="history"
-              size={18}
-              color={activeTab === 'history' ? theme.colors.onPrimary : theme.colors.onSurfaceVariant}
-            />
-            <Text
-              variant="labelLarge"
-              style={[
-                styles.toggleText,
-                { color: activeTab === 'history' ? theme.colors.onPrimary : theme.colors.onSurfaceVariant },
-              ]}
-            >
-              History
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* CONTENT FOR UPCOMING TAB */}
-        {activeTab === 'upcoming' ? (
+        {/* ── MODE 1: MAIN OVERVIEW VIEW ─────────────────────────────────────── */}
+        {viewMode === 'main' && (
           <>
-            {/* Section 1: Upcoming Appointments */}
-            <Text variant="titleMedium" style={styles.sectionTitle}>
-              Upcoming Appointment
-            </Text>
+            {/* Banner Section */}
+            <View style={styles.bannerSection}>
+              <Text variant="headlineSmall" style={styles.bannerTitle}>
+                Your Beauty Schedule ✨
+              </Text>
+              <Text variant="bodyMedium" style={styles.bannerSubtitle}>
+                Stay on top of your appointments and never miss your glow time.
+              </Text>
+            </View>
+
+            {/* SECTION 1: UPCOMING APPOINTMENTS */}
+            <View style={styles.sectionHeaderRow}>
+              <Text variant="titleMedium" style={styles.sectionTitle}>
+                Upcoming Appointments ({upcomingBookings.length})
+              </Text>
+              {upcomingBookings.length > 2 && (
+                <TouchableOpacity
+                  style={styles.seeAllBtn}
+                  onPress={() => setViewMode('all_upcoming')}
+                >
+                  <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
+                    See All
+                  </Text>
+                  <Icon source="arrow-right" size={16} color={theme.colors.primary} />
+                </TouchableOpacity>
+              )}
+            </View>
 
             {upcomingBookings.length === 0 ? (
               <EmptyState
@@ -148,7 +125,7 @@ export const MyBookingsScreen = ({ navigation }: any) => {
                 onAction={() => navigation.navigate('BookAppointment')}
               />
             ) : (
-              upcomingBookings.map((item) => {
+              upcomingBookings.slice(0, 2).map((item) => {
                 const statusColor = BOOKING_STATUS_COLORS[item.status] || '#757575';
                 const serviceTitle = item.services.map((s) => s.title).join(', ');
                 return (
@@ -199,14 +176,14 @@ export const MyBookingsScreen = ({ navigation }: any) => {
               })
             )}
 
-            {/* Section 2: Booking History Preview */}
-            <View style={styles.sectionHeaderRow}>
+            {/* SECTION 2: BOOKING HISTORY PREVIEW */}
+            <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
               <Text variant="titleMedium" style={styles.sectionTitle}>
-                Booking History
+                Booking History ({historyBookings.length})
               </Text>
               <TouchableOpacity
                 style={styles.seeAllBtn}
-                onPress={() => setActiveTab('history')}
+                onPress={() => setViewMode('all_history')}
               >
                 <Text variant="labelLarge" style={{ color: theme.colors.primary, fontWeight: 'bold' }}>
                   See All
@@ -269,8 +246,80 @@ export const MyBookingsScreen = ({ navigation }: any) => {
               })
             )}
           </>
-        ) : (
-          <>
+        )}
+
+        {/* ── MODE 2: DEDICATED FULL UPCOMING SCREEN ───────────────────────── */}
+        {viewMode === 'all_upcoming' && (
+          <View>
+            <Text variant="bodyMedium" style={{ opacity: 0.7, marginBottom: 12 }}>
+              All scheduled appointments that are active or confirmed.
+            </Text>
+
+            {upcomingBookings.length === 0 ? (
+              <EmptyState
+                icon="calendar-blank"
+                title="No Upcoming Appointments"
+                description="You have no active or confirmed bookings right now."
+                actionLabel="Book Appointment Now"
+                onAction={() => navigation.navigate('BookAppointment')}
+              />
+            ) : (
+              upcomingBookings.map((item) => {
+                const statusColor = BOOKING_STATUS_COLORS[item.status] || '#757575';
+                const serviceTitle = item.services.map((s) => s.title).join(', ');
+                return (
+                  <Card
+                    key={item.id}
+                    mode="outlined"
+                    style={styles.upcomingCard}
+                    onPress={() => navigation.navigate('BookingDetail', { booking: item })}
+                  >
+                    <View style={styles.cardRow}>
+                      <Image
+                        source={{
+                          uri:
+                            item.services[0]?.imageUrl ||
+                            'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=400',
+                        }}
+                        style={styles.cardImage}
+                      />
+                      <View style={styles.cardInfo}>
+                        <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold' }}>
+                          {serviceTitle}
+                        </Text>
+                        <Text variant="bodySmall" style={{ opacity: 0.7, marginVertical: 2 }}>
+                          with {item.stylistName}
+                        </Text>
+                        <View style={styles.metaLine}>
+                          <Icon source="calendar" size={14} color={theme.colors.primary} />
+                          <Text variant="bodySmall" style={{ opacity: 0.8 }}>
+                            {item.bookingDate} • {item.timeSlot}
+                          </Text>
+                        </View>
+
+                        <Chip
+                          compact
+                          style={{
+                            backgroundColor: statusColor + '20',
+                            marginTop: 6,
+                            alignSelf: 'flex-start',
+                          }}
+                          textStyle={{ color: statusColor, fontWeight: 'bold', fontSize: 11 }}
+                        >
+                          {BOOKING_STATUS_LABELS[item.status]}
+                        </Chip>
+                      </View>
+                    </View>
+                  </Card>
+                );
+              })
+            )}
+          </View>
+        )}
+
+        {/* ── MODE 3: DEDICATED FULL HISTORY SCREEN ────────────────────────── */}
+        {viewMode === 'all_history' && (
+          <View>
             {/* Filter Chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow}>
               {[
@@ -295,8 +344,8 @@ export const MyBookingsScreen = ({ navigation }: any) => {
             {filteredHistory.length === 0 ? (
               <EmptyState
                 icon="history"
-                title="No History Found"
-                description="No past appointments match this filter."
+                title="No History Records"
+                description="No appointment records match your selected filter."
               />
             ) : (
               filteredHistory.map((item) => {
@@ -319,40 +368,35 @@ export const MyBookingsScreen = ({ navigation }: any) => {
                         style={styles.cardImageSmall}
                       />
                       <View style={styles.cardInfo}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Text variant="titleSmall" numberOfLines={1} style={{ fontWeight: 'bold', flex: 1 }}>
-                            {serviceTitle}
-                          </Text>
-                          <Chip
-                            compact
-                            style={{ backgroundColor: statusColor + '20', marginLeft: 6 }}
-                            textStyle={{ color: statusColor, fontWeight: 'bold', fontSize: 11 }}
-                          >
-                            {BOOKING_STATUS_LABELS[item.status]}
-                          </Chip>
-                        </View>
+                        <Text variant="titleMedium" numberOfLines={1} style={{ fontWeight: 'bold' }}>
+                          {serviceTitle}
+                        </Text>
                         <Text variant="bodySmall" style={{ opacity: 0.7, marginVertical: 2 }}>
                           with {item.stylistName}
                         </Text>
                         <View style={styles.metaLine}>
-                          <Icon source="calendar-clock" size={14} color={theme.colors.outline} />
+                          <Icon source="calendar" size={14} color={theme.colors.outline} />
                           <Text variant="bodySmall" style={{ opacity: 0.8 }}>
                             {item.bookingDate} • {item.timeSlot}
                           </Text>
                         </View>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                          <Text variant="titleSmall" style={{ fontWeight: 'bold', color: theme.colors.primary }}>
-                            ${item.totalAmount}
-                          </Text>
-                        </View>
                       </View>
-                      <Icon source="chevron-right" size={20} color={theme.colors.outline} />
+                      <Chip
+                        compact
+                        style={{
+                          backgroundColor: statusColor + '20',
+                          alignSelf: 'center',
+                        }}
+                        textStyle={{ color: statusColor, fontWeight: 'bold', fontSize: 11 }}
+                      >
+                        {BOOKING_STATUS_LABELS[item.status]}
+                      </Chip>
                     </View>
                   </Card>
                 );
               })
             )}
-          </>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -365,7 +409,7 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   bannerSection: {
-    marginBottom: 16,
+    marginBottom: 20,
   },
   bannerTitle: {
     fontWeight: 'bold',
@@ -374,50 +418,27 @@ const styles = StyleSheet.create({
     opacity: 0.7,
     marginTop: 4,
   },
-  toggleRow: {
-    flexDirection: 'row',
-    backgroundColor: '#F3EDF7',
-    borderRadius: 24,
-    padding: 4,
-    marginBottom: 20,
-  },
-  toggleBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 6,
-  },
-  toggleText: {
-    fontWeight: 'bold',
-  },
   sectionTitle: {
     fontWeight: 'bold',
-    marginBottom: 12,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: 20,
     marginBottom: 12,
   },
   seeAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
   },
   upcomingCard: {
+    marginBottom: 12,
     borderRadius: 16,
-    marginBottom: 16,
     overflow: 'hidden',
   },
   historyCard: {
-    borderRadius: 16,
-    marginBottom: 12,
-    overflow: 'hidden',
+    marginBottom: 10,
+    borderRadius: 12,
   },
   cardRow: {
     flexDirection: 'row',
@@ -425,19 +446,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cardImage: {
-    width: 100,
-    height: 110,
+    width: 72,
+    height: 72,
     borderRadius: 12,
   },
   cardImageSmall: {
-    width: 80,
-    height: 85,
-    borderRadius: 12,
+    width: 56,
+    height: 56,
+    borderRadius: 10,
   },
   cardInfo: {
     flex: 1,
     marginLeft: 12,
-    justifyContent: 'center',
   },
   metaLine: {
     flexDirection: 'row',
@@ -446,7 +466,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   filterRow: {
-    flexDirection: 'row',
     marginBottom: 16,
   },
   filterChip: {

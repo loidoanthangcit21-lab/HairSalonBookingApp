@@ -1,13 +1,13 @@
 package demo.booking.hairsalon.model.dto.response;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
-public record SalonServiceResponse(
+public record ServiceResponse(
         UUID id,
-        String title,
+        String name,
         String description,
-        Double price,
-        Integer durationMinutes,
+        BigDecimal price,
         String imageUrl,
         UUID categoryId,
         String categoryName

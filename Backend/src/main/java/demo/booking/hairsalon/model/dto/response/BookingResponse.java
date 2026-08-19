@@ -1,7 +1,5 @@
 package demo.booking.hairsalon.model.dto.response;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,8 +9,8 @@ public record BookingResponse(
         UUID customerId,
         String customerName,
         String customerPhone,
-        UUID stylistId,
-        String stylistName,
+        UUID expertId,
+        String expertName,
         String bookingDate,
         String timeSlot,
         String status,
@@ -22,6 +20,6 @@ public record BookingResponse(
         Boolean createdByStaff,
         String creationType,
         String createdAt,
-        List<SalonServiceResponse> services
+        List<ServiceResponse> services
 ) {
 }

@@ -32,27 +32,33 @@ export const ExploreScreen = ({ navigation }: any) => {
     queryFn: () => bookingService.getStylists(),
   });
 
+  const { data: fetchedCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => bookingService.getCategories(),
+  });
+
   const categories = [
     { id: 'all', name: 'All' },
-    { id: 'cat_1', name: 'Haircuts' },
-    { id: 'cat_2', name: 'Styling' },
-    { id: 'cat_3', name: 'Coloring' },
-    { id: 'cat_4', name: 'Treatment' },
+    ...(fetchedCategories || []),
   ];
 
   const filteredServices = (services || []).filter((s) => {
     const matchesCategory =
-      selectedCategory === 'all' || s.categoryId === selectedCategory;
+      selectedCategory === 'all' ||
+      s.categoryId === selectedCategory ||
+      s.categoryName === selectedCategory;
     const matchesSearch =
-      s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.description.toLowerCase().includes(searchQuery.toLowerCase());
+      (s.title || s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.description || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
   const filteredStylists = (stylists || []).filter((st) =>
     st.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    st.specialty.toLowerCase().includes(searchQuery.toLowerCase())
+    (st.specialty || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+
 
   const isLoading = loadingServices || loadingStylists;
 
@@ -170,8 +176,9 @@ export const ExploreScreen = ({ navigation }: any) => {
             <Card
               mode="outlined"
               style={styles.card}
-              onPress={() => navigation.navigate('ServiceDetail', { serviceId: item.id, service: item })}
+              onPress={() => navigation.navigate('BookAppointment', { selectedServiceId: item.id })}
             >
+
               <Card.Cover source={{ uri: item.imageUrl }} style={styles.cardCover} />
               <Card.Content style={styles.cardContent}>
                 <View style={{ flex: 1 }}>

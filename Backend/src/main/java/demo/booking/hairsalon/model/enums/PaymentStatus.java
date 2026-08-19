@@ -1,6 +1,7 @@
 package demo.booking.hairsalon.model.enums;
 
 public enum PaymentStatus {
-    UNPAID,
-    PAID
+    PENDING,
+    SUCCESS,
+    FAILED
 }

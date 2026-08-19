@@ -7,38 +7,41 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
 @Repository
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
-    List<Booking> findByCustomerIdOrderByAppointmentDateDescStartTimeDesc(UUID customerId);
-    List<Booking> findByStylistIdAndAppointmentDate(UUID stylistId, LocalDate date);
-    List<Booking> findByAppointmentDateOrderByStartTimeAsc(LocalDate date);
-    List<Booking> findByStylistIdAndStatusIn(UUID stylistId, List<BookingStatus> statuses);
-    List<Booking> findByCreatedByStaffTrueOrderByAppointmentDateDescStartTimeDesc();
+    List<Booking> findByUserId(UUID userId);
+    List<Booking> findByExpertId(UUID expertId);
+    List<Booking> findByServiceId(UUID serviceId);
+    List<Booking> findByStatus(BookingStatus status);
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE b.stylist.id = :stylistId " +
-           "AND b.appointmentDate = :date " +
-           "AND b.status IN :statuses " +
-           "AND b.startTime < :endTime AND b.endTime > :startTime")
-    long countOverlappingBookings(@Param("stylistId") UUID stylistId,
-                                  @Param("date") LocalDate date,
-                                  @Param("startTime") LocalTime startTime,
-                                  @Param("endTime") LocalTime endTime,
-                                  @Param("statuses") List<BookingStatus> statuses);
+    @Query("SELECT b FROM Booking b WHERE b.expert.id = :expertId " +
+           "AND b.status NOT IN (demo.booking.hairsalon.model.enums.BookingStatus.CANCELLED, demo.booking.hairsalon.model.enums.BookingStatus.NO_SHOW) " +
+           "AND b.startAt < :endAt AND b.endAt > :startAt")
+    List<Booking> findOverlappingBookings(@Param("expertId") UUID expertId,
+                                           @Param("startAt") LocalDateTime startAt,
+                                           @Param("endAt") LocalDateTime endAt);
 
-    @Query("SELECT COUNT(b) FROM Booking b WHERE b.stylist.id = :stylistId " +
-           "AND b.id != :excludeBookingId " +
-           "AND b.appointmentDate = :date " +
-           "AND b.status IN :statuses " +
-           "AND b.startTime < :endTime AND b.endTime > :startTime")
-    long countOverlappingBookingsExcludeId(@Param("stylistId") UUID stylistId,
-                                           @Param("excludeBookingId") UUID excludeBookingId,
-                                           @Param("date") LocalDate date,
-                                           @Param("startTime") LocalTime startTime,
-                                           @Param("endTime") LocalTime endTime,
-                                           @Param("statuses") List<BookingStatus> statuses);
+    @Query("SELECT b FROM Booking b WHERE b.user.id = :userId " +
+           "AND b.status NOT IN (demo.booking.hairsalon.model.enums.BookingStatus.CANCELLED, demo.booking.hairsalon.model.enums.BookingStatus.NO_SHOW) " +
+           "AND b.startAt < :endAt AND b.endAt > :startAt")
+    List<Booking> findCustomerOverlappingBookings(@Param("userId") UUID userId,
+                                                   @Param("startAt") LocalDateTime startAt,
+                                                   @Param("endAt") LocalDateTime endAt);
+
+
+    @Query("SELECT b FROM Booking b WHERE b.reminderSent = false " +
+           "AND b.status IN (demo.booking.hairsalon.model.enums.BookingStatus.PENDING, demo.booking.hairsalon.model.enums.BookingStatus.CONFIRMED) " +
+           "AND b.startAt <= :reminderThreshold")
+    List<Booking> findUpcomingBookingsForReminder(@Param("reminderThreshold") LocalDateTime reminderThreshold);
+
+    @Query("SELECT b FROM Booking b WHERE b.startAt >= :startOfDay AND b.startAt <= :endOfDay")
+    List<Booking> findTodayBookings(@Param("startOfDay") LocalDateTime startOfDay,
+                                    @Param("endOfDay") LocalDateTime endOfDay);
 }
+
+
+

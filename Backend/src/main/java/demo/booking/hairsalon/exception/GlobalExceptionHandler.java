@@ -27,8 +27,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorMessage));
     }
 
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<?>> handleDataIntegrityViolation(org.springframework.dao.DataIntegrityViolationException ex) {
+        log.warn("Database constraint violation (possible duplicate booking): {}", ex.getMessage());
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error("EXPERT_NOT_AVAILABLE: The selected stylist is already booked at this time slot."));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<?>> handleUnknownException(Exception ex) {
+
         log.error("Unhandled exception occurred: ", ex);
         return ResponseEntity
                 .internalServerError()

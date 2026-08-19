@@ -49,7 +49,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
         if (!notification.getUser().getId().equals(user.getId())) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED_ACTION); // user can only mark their own
+            throw new BusinessException(ErrorCode.UNAUTHORIZED_ACTION);
         }
 
         notification.setRead(true);
@@ -58,31 +58,54 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     @Transactional
-    public void sendNotification(User user, String title, String message, String type) {
+    public void sendNotification(User user, String title, String message, String typeStr) {
         try {
             Notification notification = new Notification();
             notification.setUser(user);
             notification.setTitle(title);
             notification.setMessage(message);
             
-            // Map string type to enum if possible, or just use string if we changed entity.
-            // Oh wait, Notification.java uses NotificationType enum!
-            notification.setType(NotificationType.valueOf(type.toUpperCase()));
+            NotificationType type;
+            try {
+                type = NotificationType.valueOf(typeStr.toUpperCase());
+            } catch (Exception e) {
+                type = NotificationType.BOOKING_CONFIRMED;
+            }
+            notification.setType(type);
             
             notificationRepository.save(notification);
 
             NotificationResponse response = mapToResponse(notification);
 
-            // Push via STOMP WebSocket
             messagingTemplate.convertAndSendToUser(
-                    user.getEmail(),
+                    user.getEmail() != null ? user.getEmail() : user.getId().toString(),
                     "/queue/notifications",
                     response
             );
         } catch (Exception e) {
-            log.error("Failed to send notification to user {}: {}", user.getEmail(), e.getMessage());
+            log.error("Failed to send notification to user: {}", e.getMessage());
         }
     }
+
+    @Override
+    public void sendBookingUpdate(User user, demo.booking.hairsalon.model.dto.response.BookingResponse booking) {
+        try {
+            // Broadcast to public topic for instant occupied slot refresh across all clients
+            messagingTemplate.convertAndSend("/topic/occupied-slots", booking);
+
+            // Push to individual user queue if customer exists
+            if (user != null && user.getEmail() != null) {
+                messagingTemplate.convertAndSendToUser(
+                        user.getEmail(),
+                        "/queue/booking-updates",
+                        booking
+                );
+            }
+        } catch (Exception e) {
+            log.error("Failed to send booking update: {}", e.getMessage());
+        }
+    }
+
 
     private NotificationResponse mapToResponse(Notification notification) {
         return new NotificationResponse(
@@ -91,7 +114,7 @@ public class NotificationServiceImpl implements NotificationService {
                 notification.getMessage(),
                 notification.getCreatedAt() != null ? notification.getCreatedAt().toString() : null,
                 notification.isRead(),
-                notification.getType() != null ? notification.getType().name().toLowerCase() : "system"
+                notification.getType() != null ? notification.getType().name().toLowerCase() : "booking_confirmed"
         );
     }
 }

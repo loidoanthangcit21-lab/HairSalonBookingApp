@@ -49,14 +49,26 @@ export const StylistProfileDetailScreen = ({ navigation, route }: any) => {
 
         <View style={styles.section}>
           <Text variant="titleMedium" style={styles.sectionTitle}>
-            Specialties & Skills
+            Categories
           </Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Chip icon="content-cut">{stylist.specialty}</Chip>
-            <Chip icon="scissors-cutting">Precision Fades</Chip>
-            <Chip icon="hair-dryer">Beard Styling</Chip>
+            {stylist.categories && stylist.categories.length > 0 ? (
+              stylist.categories.map((cat: any) => (
+                <Chip key={cat.id} icon="tag-outline" style={{ marginRight: 6, marginBottom: 6 }}>
+                  {cat.name}
+                </Chip>
+              ))
+            ) : (
+              (stylist.specialty || 'Haircut').split('•').map((itemStr: string, idx: number) => (
+                <Chip key={idx} icon="tag-outline" style={{ marginRight: 6, marginBottom: 6 }}>
+                  {itemStr.trim()}
+                </Chip>
+              ))
+            )}
           </View>
         </View>
+
+
 
         <View style={styles.section}>
           <Text variant="titleMedium" style={styles.sectionTitle}>

@@ -37,9 +37,10 @@ export const StylistAssignedJobsScreen = ({ navigation }: any) => {
 
   const jobList = jobs || [];
 
-  if (isLoading) {
+  if (isLoading && !jobs) {
     return <LoadingOverlay message="Fetching your assigned jobs for today..." />;
   }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

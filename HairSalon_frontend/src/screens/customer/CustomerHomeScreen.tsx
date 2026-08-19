@@ -13,6 +13,8 @@ import { useQuery } from '@tanstack/react-query';
 import { bookingService } from '../../services/bookingService';
 import { useAppSelector } from '../../store';
 
+import { NotificationIconButton } from '../../components/NotificationIconButton';
+
 export const CustomerHomeScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const user = useAppSelector((state) => state.auth.user);
@@ -35,14 +37,12 @@ export const CustomerHomeScreen = ({ navigation }: any) => {
           subtitle="Ready for a fresh new look?"
         />
         <Appbar.Action
-          icon="bell-outline"
-          onPress={() => navigation.navigate('NotificationPanel')}
-        />
-        <Appbar.Action
           icon="information-outline"
           onPress={() => navigation.navigate('AboutSalon')}
         />
       </Appbar.Header>
+
+
 
       <ScrollView contentContainerStyle={styles.container}>
         {/* Hero Banner Section */}
@@ -89,7 +89,8 @@ export const CustomerHomeScreen = ({ navigation }: any) => {
               key={srv.id}
               mode="outlined"
               style={styles.promoCard}
-              onPress={() => navigation.navigate('ServiceDetail', { serviceId: srv.id, service: srv })}
+              onPress={() => navigation.navigate('BookAppointment', { selectedServiceId: srv.id })}
+
             >
               <Card.Cover source={{ uri: srv.imageUrl }} style={styles.cardImage} />
               <Card.Content style={{ padding: 12 }}>
@@ -133,16 +134,18 @@ export const CustomerHomeScreen = ({ navigation }: any) => {
                 <Text variant="titleSmall" numberOfLines={1} style={{ fontWeight: 'bold' }}>
                   {st.fullName}
                 </Text>
-                <Chip
-                  icon="content-cut"
-                  compact
-                  style={{ marginVertical: 4, alignSelf: 'flex-start', maxWidth: '100%' }}
-                  ellipsizeMode="tail"
-                >
-                  <Text variant="labelMedium" numberOfLines={1} style={{ maxWidth: 110 }}>
-                    {st.specialty}
-                  </Text>
-                </Chip>
+                <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                  <Chip
+                    icon="content-cut"
+                    compact
+                    style={{ flexShrink: 1, maxWidth: '100%' }}
+                  >
+                    <Text variant="labelSmall" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {st.specialty || 'Master Stylist'}
+                    </Text>
+                  </Chip>
+                </View>
+
               </Card.Content>
             </Card>
           ))}

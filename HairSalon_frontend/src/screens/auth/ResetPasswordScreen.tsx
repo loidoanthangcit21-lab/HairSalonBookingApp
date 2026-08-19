@@ -28,8 +28,10 @@ const resetSchema = z
 
 type ResetFormValues = z.infer<typeof resetSchema>;
 
-export const ResetPasswordScreen = ({ navigation }: any) => {
+export const ResetPasswordScreen = ({ navigation, route }: any) => {
   const theme = useTheme();
+  const email = route?.params?.email || '';
+  const otp = route?.params?.otp || '';
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [snackbarVisible, setSnackbarVisible] = useState(false);
@@ -49,20 +51,28 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
   const hasLength = passwordValue.length >= 8;
   const hasNumber = /\d/.test(passwordValue);
 
+  const [apiError, setApiError] = useState('');
+
   const resetMutation = useMutation({
     mutationFn: (values: ResetFormValues) =>
-      authService.resetPassword(values.newPassword),
+      authService.resetPassword(values.newPassword, email, otp),
     onSuccess: () => {
+      setApiError('');
       setSnackbarVisible(true);
       setTimeout(() => {
         navigation.navigate('Login');
       }, 1500);
     },
+    onError: (err: any) => {
+      setApiError(err?.message || 'Invalid or expired OTP token. Please check and try again.');
+    },
   });
 
   const onSubmit = (values: ResetFormValues) => {
+    setApiError('');
     resetMutation.mutate(values);
   };
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -159,7 +169,10 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
           />
         </View>
 
+        {apiError ? <HelperText type="error" style={{ textAlign: 'center', marginBottom: 8 }}>{apiError}</HelperText> : null}
+
         <Button
+
           mode="contained"
           onPress={handleSubmit(onSubmit)}
           loading={resetMutation.isPending}

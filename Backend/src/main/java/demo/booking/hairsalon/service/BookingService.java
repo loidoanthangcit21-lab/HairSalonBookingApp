@@ -25,4 +25,6 @@ public interface BookingService {
     // Stylist (Or Receptionist)
     List<BookingResponse> getStylistAssignedJobs(String stylistEmail);
     void updateBookingStatus(UUID bookingId, BookingStatus newStatus);
+    List<BookingResponse> getAllActiveBookings();
 }
+

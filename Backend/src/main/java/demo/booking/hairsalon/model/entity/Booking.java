@@ -1,15 +1,12 @@
 package demo.booking.hairsalon.model.entity;
 
 import demo.booking.hairsalon.model.enums.BookingStatus;
-import demo.booking.hairsalon.model.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.UUID;
 
 @Entity
@@ -17,61 +14,70 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "bookings")
+@Builder
+@Table(
+    name = "bookings",
+    indexes = {
+
+        @Index(name = "idx_bookings_user_id", columnList = "user_id"),
+        @Index(name = "idx_bookings_expert_id", columnList = "expert_id"),
+        @Index(name = "idx_bookings_service_id", columnList = "service_id"),
+        @Index(name = "idx_bookings_start_at", columnList = "start_at"),
+        @Index(name = "idx_bookings_end_at", columnList = "end_at"),
+        @Index(name = "idx_bookings_status", columnList = "status")
+    }
+)
+
 public class Booking {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @ManyToOne
-    @JoinColumn(name = "customer_id", nullable = false)
-    private User customer;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = true)
+    private User user;
 
-    @ManyToOne
-    @JoinColumn(name = "stylist_id")
-    private User stylist; // or StylistProfile, but using User makes it simpler
 
-    @Column(name = "appointment_date", nullable = false)
-    private LocalDate appointmentDate;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id", nullable = false)
+    private Service service;
 
-    @Column(name = "start_time", nullable = false)
-    private LocalTime startTime;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "expert_id")
+    private Expert expert;
 
-    @Column(name = "end_time")
-    private LocalTime endTime;
+    @Column(name = "start_at", nullable = false)
+    private LocalDateTime startAt;
+
+    @Column(name = "end_at", nullable = false)
+    private LocalDateTime endAt;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false, length = 20)
     private BookingStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false)
-    private PaymentStatus paymentStatus;
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
 
-    @Column(name = "total_amount")
-    private Double totalAmount;
+    @Column(name = "cancel_reason", columnDefinition = "TEXT")
+    private String cancelReason;
 
-    @Column(name = "booking_code", unique = true)
-    private String bookingCode;
+    @Column(name = "checked_in_at")
+    private LocalDateTime checkedInAt;
 
-    @Column(name = "customer_name")
-    private String customerName;
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
 
-    @Column(name = "customer_phone")
-    private String customerPhone;
-
-    @Column(length = 1000)
-    private String notes;
-
-    @Column(name = "created_by_staff")
-    private Boolean createdByStaff = false;
-
-    @Column(name = "creation_type")
-    private String creationType;
+    @Builder.Default
+    @Column(name = "reminder_sent", nullable = false)
+    private boolean reminderSent = false;
 
     @CreationTimestamp
+
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

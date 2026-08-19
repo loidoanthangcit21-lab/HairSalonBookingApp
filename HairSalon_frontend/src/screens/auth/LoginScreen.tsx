@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,13 +17,14 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation } from '@tanstack/react-query';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { authService } from '../../services/authService';
 import { storage } from '../../utils/storage';
 import { useAppDispatch } from '../../store';
 import { setCredentials } from '../../store/authSlice';
 
 const loginSchema = z.object({
-  email: z.string().min(3, 'Username or Email is required'),
+  email: z.string().min(1, 'Email is required').email('Invalid email address'),
   password: z.string().min(4, 'Password must be at least 4 characters'),
 });
 
@@ -33,6 +34,21 @@ export const LoginScreen = ({ navigation }: any) => {
   const theme = useTheme();
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    try {
+      if (GoogleSignin && typeof GoogleSignin.configure === 'function') {
+        GoogleSignin.configure({
+          webClientId: '870197791443-vjdrda8ao3pkoldu1imps251v5adu311.apps.googleusercontent.com',
+          offlineAccess: true,
+        });
+      }
+    } catch (err) {
+      console.log('GoogleSignin configure error:', err);
+    }
+  }, []);
+
+
 
   const {
     control,
@@ -55,6 +71,49 @@ export const LoginScreen = ({ navigation }: any) => {
   const onSubmit = (values: LoginFormValues) => {
     loginMutation.mutate(values);
   };
+
+  const googleMutation = useMutation({
+    mutationFn: (idToken: string) => authService.googleLogin(idToken),
+    onSuccess: async (data) => {
+      await storage.setToken(data.token);
+      await storage.setUser(data.user);
+      dispatch(setCredentials(data));
+    },
+  });
+
+  const [googleError, setGoogleError] = useState('');
+
+  const handleGoogleSignIn = async () => {
+    setGoogleError('');
+    try {
+      if (GoogleSignin && typeof GoogleSignin.hasPlayServices === 'function') {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const response = await GoogleSignin.signIn();
+        const idToken = response.data?.idToken || (response as any).idToken;
+        if (idToken) {
+          googleMutation.mutate(idToken);
+          return;
+        }
+      }
+      setGoogleError('Unable to obtain Google ID Token from Google Sign-In SDK.');
+    } catch (err: any) {
+      console.log('Google Sign-In Error:', err);
+      if (err?.code === '12501' || err?.code === 'SIGN_IN_CANCELLED') {
+        // User cancelled Google sign in dialog
+        return;
+      }
+      if (err?.code === '10' || err?.toString().includes('DEVELOPER_ERROR')) {
+        setGoogleError(
+          'Google DEVELOPER_ERROR: Please ensure you use a "Web application" Client ID for webClientId, and your Android Client ID with SHA-1 (5E:8F:16:06:2E:A3:CD:2C:4A:0D:54:78:76:BA:A6:F3:8C:AB:F6:25) is created in the same Google Cloud Console project.'
+        );
+      } else {
+        setGoogleError(err?.message || 'Google Sign-In failed. Please check Google Play Services.');
+      }
+    }
+  };
+
+
+
 
   return (
     <KeyboardAvoidingView
@@ -122,11 +181,12 @@ export const LoginScreen = ({ navigation }: any) => {
             </HelperText>
           )}
 
-          {loginMutation.isError && (
+          {(loginMutation.isError || googleMutation.isError || !!googleError) && (
             <HelperText type="error" visible={true} style={{ textAlign: 'center', marginTop: 8 }}>
-              {loginMutation.error.message}
+              {googleError || loginMutation.error?.message || googleMutation.error?.message}
             </HelperText>
           )}
+
 
           <Button
             mode="text"
@@ -140,11 +200,29 @@ export const LoginScreen = ({ navigation }: any) => {
             mode="contained"
             onPress={handleSubmit(onSubmit)}
             loading={loginMutation.isPending}
-            disabled={loginMutation.isPending}
+            disabled={loginMutation.isPending || googleMutation.isPending}
             style={styles.submitBtn}
             contentStyle={{ paddingVertical: 6 }}
           >
             Sign In
+          </Button>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text variant="labelMedium" style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <Button
+            mode="outlined"
+            icon="google"
+            onPress={handleGoogleSignIn}
+            loading={googleMutation.isPending}
+            disabled={googleMutation.isPending || loginMutation.isPending}
+            style={styles.googleBtn}
+            contentStyle={{ paddingVertical: 6 }}
+          >
+            Sign In with Google
           </Button>
 
           <Button
@@ -159,6 +237,7 @@ export const LoginScreen = ({ navigation }: any) => {
     </KeyboardAvoidingView>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {
@@ -201,4 +280,23 @@ const styles = StyleSheet.create({
     marginTop: 16,
     borderRadius: 8,
   },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E0E0E0',
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    opacity: 0.6,
+  },
+  googleBtn: {
+    borderRadius: 8,
+    borderColor: '#CCC',
+  },
 });
+

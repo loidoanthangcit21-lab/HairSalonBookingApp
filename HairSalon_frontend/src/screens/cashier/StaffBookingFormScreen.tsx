@@ -371,7 +371,7 @@ export const StaffBookingFormScreen = ({ navigation, route }: any) => {
                     {chosenStylist.fullName}
                   </Text>
                   <Chip icon="content-cut" compact style={{ marginVertical: 2, alignSelf: 'flex-start' }}>
-                    {chosenStylist.specialty}
+                    {chosenStylist.specialty || 'Hair Stylist'}
                   </Chip>
                 </View>
                 {isChosenStylistBusy ? (

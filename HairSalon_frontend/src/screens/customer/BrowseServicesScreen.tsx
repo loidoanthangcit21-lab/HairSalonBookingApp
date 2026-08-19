@@ -32,12 +32,14 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
     queryFn: () => bookingService.getServices(),
   });
 
+  const { data: fetchedCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => bookingService.getCategories(),
+  });
+
   const categories = [
     { id: 'all', name: 'All' },
-    { id: 'cat_1', name: 'Haircuts' },
-    { id: 'cat_2', name: 'Styling & Perm' },
-    { id: 'cat_3', name: 'Coloring' },
-    { id: 'cat_4', name: 'Spa & Care' },
+    ...(fetchedCategories || []),
   ];
 
   const toggleSelection = (serviceId: string) => {
@@ -56,10 +58,13 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
 
   const filteredServices = (services || []).filter((s) => {
     const matchesCategory =
-      selectedCategory === 'all' || s.categoryId === selectedCategory;
-    const matchesSearch = s.title.toLowerCase().includes(searchQuery.toLowerCase());
+      selectedCategory === 'all' ||
+      s.categoryId === selectedCategory ||
+      s.categoryName === selectedCategory;
+    const matchesSearch = (s.title || s.name || '').toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
 
   const handleApplySelection = () => {
     if (route?.params?.onSelectServices) {
@@ -143,9 +148,10 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
                 if (isSelectionMode) {
                   toggleSelection(item.id);
                 } else {
-                  navigation.navigate('ServiceDetail', { serviceId: item.id, service: item });
+                  navigation.navigate('BookAppointment', { selectedServiceId: item.id });
                 }
               }}
+
             >
               <Card.Cover source={{ uri: item.imageUrl }} style={styles.cardCover} />
               <Card.Content style={styles.cardContent}>

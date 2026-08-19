@@ -1,7 +1,8 @@
 package demo.booking.hairsalon.model.enums;
 
 public enum NotificationType {
-    BOOKING,
-    SYSTEM,
-    PROMO
+    BOOKING_CONFIRMED,
+    BOOKING_CANCELLED,
+    BOOKING_RESCHEDULED,
+    BOOKING_REMINDER
 }

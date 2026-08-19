@@ -18,7 +18,10 @@ import { ViewProfileScreen } from '../screens/auth/ViewProfileScreen';
 import { UpdateProfileScreen } from '../screens/auth/UpdateProfileScreen';
 import { ChangePasswordScreen } from '../screens/auth/ChangePasswordScreen';
 import { NotificationPanelScreen } from '../screens/auth/NotificationPanelScreen';
-import { SettingsScreen } from '../screens/auth/SettingsScreen';
+
+
+import { useQuery } from '@tanstack/react-query';
+import { userService } from '../services/userService';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -27,6 +30,17 @@ const CustomerTabs = () => {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPadding = insets.bottom > 0 ? insets.bottom : 14;
+
+  const { data: notifications } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => userService.getNotifications(),
+    refetchInterval: 5000,
+  });
+
+
+
+
+  const unreadCount = (notifications || []).filter((n) => !n.read).length;
 
   return (
     <Tab.Navigator
@@ -57,11 +71,25 @@ const CustomerTabs = () => {
       <Tab.Screen name="HomeTab" component={CustomerHomeScreen} options={{ tabBarLabel: 'Home' }} />
       <Tab.Screen name="BookAppointmentTab" component={BookAppointmentScreen} options={{ tabBarLabel: 'Booking' }} />
       <Tab.Screen name="MyBookingsTab" component={MyBookingsScreen} options={{ tabBarLabel: 'Appointment' }} />
-      <Tab.Screen name="NotificationTab" component={NotificationPanelScreen} options={{ tabBarLabel: 'Notification' }} />
+      <Tab.Screen
+        name="NotificationTab"
+        component={NotificationPanelScreen}
+        options={{
+          tabBarLabel: 'Notification',
+          tabBarBadge: unreadCount > 0 ? (unreadCount > 99 ? '99+' : unreadCount) : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: theme.colors.error,
+            color: '#FFFFFF',
+            fontSize: 10,
+            fontWeight: 'bold',
+          },
+        }}
+      />
       <Tab.Screen name="ProfileTab" component={ViewProfileScreen} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
 };
+
 
 export const CustomerNavigator = () => {
   return (
@@ -79,7 +107,7 @@ export const CustomerNavigator = () => {
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="NotificationPanel" component={NotificationPanelScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
+
   );
 };

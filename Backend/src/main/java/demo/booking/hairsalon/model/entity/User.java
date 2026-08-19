@@ -2,7 +2,6 @@ package demo.booking.hairsalon.model.entity;
 
 import demo.booking.hairsalon.model.enums.Role;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -15,32 +14,45 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "users")
+@Builder
+@Table(
+    name = "users",
+    indexes = {
+        @Index(name = "idx_users_phone", columnList = "phone"),
+        @Index(name = "idx_users_email", columnList = "email")
+    }
+)
 public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-    @Column(name = "first_name")
-    private String firstName;
-    @Column(name = "last_name")
-    private String lastName;
-    @Column(nullable = false, unique = true, name = "email")
-    private String email;
-    @Column(name = "password", nullable = false)
-    private String password;
-    @Enumerated(EnumType.STRING)
-    @Column(name = "role")
-    private Role role;
-    
-    @Column(name = "phone_number")
-    private String phoneNumber;
-    
-    @Column(name = "avatar_url")
-    private String avatarUrl;
 
-    private boolean enabled;
+    @Column(name = "full_name", nullable = false, length = 100)
+    private String fullName;
+
+    @Column(name = "phone", nullable = false, unique = true, length = 20)
+    private String phone;
+
+    @Column(name = "email", unique = true, length = 150)
+    private String email;
+
+    @Column(name = "password")
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", length = 30)
+    private Role role;
+
+    @Builder.Default
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled = true;
+
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
     @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
 }

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { FlatList, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Appbar, Avatar, Button, Card, Chip, Surface, Text, useTheme } from 'react-native-paper';
+import { Appbar, Avatar, Button, Card, Chip, Searchbar, Surface, Text, useTheme } from 'react-native-paper';
 import { useQuery } from '@tanstack/react-query';
 import { bookingService } from '../../services/bookingService';
 import { LoadingOverlay } from '../../components/LoadingOverlay';
+import { EmptyState } from '../../components/EmptyState';
 import { Stylist } from '../../types/service';
 import { BookingStatus } from '../../constants/bookingStatus';
 
@@ -17,11 +18,23 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
   const selectedTimeSlot = route?.params?.selectedTimeSlot;
 
   const [selectedId, setSelectedId] = useState<string>(initialSelectedId);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const { data: stylists, isLoading, refetch } = useQuery({
     queryKey: ['stylists'],
     queryFn: () => bookingService.getStylists(),
   });
+
+  const { data: fetchedCategories } = useQuery({
+    queryKey: ['categories'],
+    queryFn: () => bookingService.getCategories(),
+  });
+
+  const categories = [
+    { id: 'all', name: 'All' },
+    ...(fetchedCategories || []),
+  ];
 
   const { data: allBookings } = useQuery({
     queryKey: ['myBookings'],
@@ -40,6 +53,24 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
         b.timeSlot === selectedTimeSlot
     );
   };
+
+  const filteredStylists = (stylists || []).filter((st) => {
+    const matchesSearch = st.fullName.toLowerCase().includes(searchQuery.toLowerCase());
+    const selectedCategoryObj = (fetchedCategories || []).find((c) => c.id === selectedCategory);
+    const targetCatName = selectedCategoryObj ? selectedCategoryObj.name.toLowerCase() : selectedCategory.toLowerCase();
+
+    const matchesCategory =
+      selectedCategory === 'all' ||
+      (st.categories &&
+        st.categories.some(
+          (c) =>
+            c.id === selectedCategory ||
+            c.name.toLowerCase() === targetCatName ||
+            c.name.toLowerCase() === selectedCategory.toLowerCase()
+        ));
+    return matchesSearch && matchesCategory;
+  });
+
 
   const selectedStylist = (stylists || []).find((st) => st.id === selectedId);
 
@@ -65,9 +96,36 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
         <Appbar.Content title={isSelectionMode ? 'Select Master Stylist' : 'Our Master Stylists'} />
       </Appbar.Header>
 
+      <View style={styles.headerControls}>
+        <Searchbar
+          placeholder="Search stylists by name..."
+          onChangeText={setSearchQuery}
+          value={searchQuery}
+          style={styles.searchbar}
+        />
+
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={categories}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.categoryRow}
+          renderItem={({ item }) => (
+            <Chip
+              mode={selectedCategory === item.id ? 'flat' : 'outlined'}
+              selected={selectedCategory === item.id}
+              onPress={() => setSelectedCategory(item.id)}
+              style={styles.chip}
+            >
+              {item.name}
+            </Chip>
+          )}
+        />
+      </View>
+
       <FlatList
         key={isSelectionMode ? 'selection_mode_list' : 'catalog_mode_grid'}
-        data={stylists || []}
+        data={filteredStylists}
         keyExtractor={(item) => item.id}
         numColumns={isSelectionMode ? 1 : 2}
         refreshing={isLoading}
@@ -76,7 +134,16 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
           styles.list,
           isSelectionMode && { padding: 16, paddingBottom: 100 },
         ]}
+        ListEmptyComponent={
+          <EmptyState
+            icon="account-search"
+            title="No Stylists Found"
+            description="Try adjusting your search name or category filter."
+          />
+        }
         renderItem={({ item }: { item: Stylist }) => {
+
+
           const isSelected = selectedId === item.id;
           const isBusy = isStylistBusy(item.id);
 
@@ -108,15 +175,17 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
                     >
                       {item.fullName}
                     </Text>
-                    <Chip
-                      icon="content-cut"
-                      compact
-                      style={{ marginVertical: 4, alignSelf: 'flex-start', maxWidth: '100%' }}
-                    >
-                      <Text variant="labelSmall" numberOfLines={1} style={{ maxWidth: 120 }}>
-                        {item.specialty}
-                      </Text>
-                    </Chip>
+                    <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                      <Chip
+                        icon="content-cut"
+                        compact
+                        style={{ flexShrink: 1, maxWidth: '100%' }}
+                      >
+                        <Text variant="labelSmall" numberOfLines={1} style={{ flexShrink: 1 }}>
+                          {item.specialty || 'Master Stylist'}
+                        </Text>
+                      </Chip>
+                    </View>
                   </View>
                   {isBusy ? (
                     <Chip
@@ -155,17 +224,20 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
                   <Text variant="titleSmall" style={styles.name} numberOfLines={1}>
                     {item.fullName}
                   </Text>
-                  <Chip
-                    icon="content-cut"
-                    compact
-                    style={{ marginVertical: 6, alignSelf: 'flex-start', maxWidth: '100%' }}
-                  >
-                    <Text variant="labelMedium" numberOfLines={1} style={{ maxWidth: 100 }}>
-                      {item.specialty}
-                    </Text>
-                  </Chip>
+                  <View style={{ flexDirection: 'row', marginTop: 4 }}>
+                    <Chip
+                      icon="content-cut"
+                      compact
+                      style={{ flexShrink: 1, maxWidth: '100%' }}
+                    >
+                      <Text variant="labelSmall" numberOfLines={1} style={{ flexShrink: 1 }}>
+                        {item.specialty || 'Master Stylist'}
+                      </Text>
+                    </Chip>
+                  </View>
                 </Card.Content>
               </Card>
+
             </View>
           );
         }}
@@ -194,6 +266,21 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
 };
 
 const styles = StyleSheet.create({
+  headerControls: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  searchbar: {
+    marginBottom: 12,
+    borderRadius: 12,
+  },
+  categoryRow: {
+    paddingBottom: 4,
+  },
+  chip: {
+    marginRight: 8,
+  },
   list: {
     padding: 8,
   },
@@ -233,3 +320,4 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
 });
+

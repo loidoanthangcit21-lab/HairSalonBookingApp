@@ -46,11 +46,8 @@ export const ViewProfileScreen = ({ navigation }: any) => {
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated>
         <Appbar.Content title="My Profile" />
-        <Appbar.Action
-          icon="cog-outline"
-          onPress={() => navigation.navigate('Settings')}
-        />
       </Appbar.Header>
+
 
       <ScrollView contentContainerStyle={styles.container}>
         <Surface style={styles.headerSurface} elevation={2}>

@@ -13,37 +13,33 @@ import java.util.UUID;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "salon_services")
-public class SalonService {
+@Builder
+@Table(
+    name = "categories",
+    indexes = {
+        @Index(name = "idx_categories_name", columnList = "name")
+    }
+)
+public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(name = "name", nullable = false, unique = true, length = 100)
     private String name;
 
-    @ManyToOne
-    @JoinColumn(name = "category_id")
-    private ServiceCategory category;
-
-    @Column(length = 1000)
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
-    private Double price;
-
-    @Column(nullable = false)
-    private Integer duration; // in minutes
-
-    @Column(name = "image_url")
-    private String imageUrl;
-
-    @Column(name = "is_active")
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

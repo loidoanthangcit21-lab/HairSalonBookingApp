@@ -46,9 +46,10 @@ export const CashierTodayBookingsScreen = ({ navigation }: any) => {
       b.customerPhone.includes(searchQuery)
   );
 
-  if (isLoading) {
+  if (isLoading && !todayBookings) {
     return <LoadingOverlay message="Loading today's queue..." />;
   }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

@@ -20,8 +20,8 @@ const registerSchema = z
     fullName: z.string().min(2, 'Full Name is required'),
     email: z.string().email('Invalid email address'),
     phone: z.string().min(10, 'Phone number must be at least 10 digits'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirmPassword: z.string().min(6, 'Please confirm your password'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    confirmPassword: z.string().min(8, 'Please confirm your password'),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -32,7 +32,6 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export const RegisterScreen = ({ navigation }: any) => {
   const theme = useTheme();
-  const [snackbarVisible, setSnackbarVisible] = useState(false);
 
   const {
     control,
@@ -49,25 +48,15 @@ export const RegisterScreen = ({ navigation }: any) => {
     },
   });
 
-  const registerMutation = useMutation({
-    mutationFn: (values: RegisterFormValues) =>
-      authService.register({
-        fullName: values.fullName,
-        email: values.email,
-        phone: values.phone,
-        password: values.password,
-      }),
-    onSuccess: () => {
-      setSnackbarVisible(true);
-      setTimeout(() => {
-        navigation.navigate('Login');
-      }, 1500);
-    },
-  });
-
   const onSubmit = (values: RegisterFormValues) => {
-    registerMutation.mutate(values);
+    // Navigate immediately to OTPVerification screen, passing registration values to execute asynchronously
+    navigation.navigate('OTPVerification', {
+      email: values.email,
+      registrationValues: values,
+      isRegistration: true,
+    });
   };
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
@@ -190,25 +179,16 @@ export const RegisterScreen = ({ navigation }: any) => {
         <Button
           mode="contained"
           onPress={handleSubmit(onSubmit)}
-          loading={registerMutation.isPending}
-          disabled={registerMutation.isPending}
           style={styles.submitBtn}
           contentStyle={{ paddingVertical: 6 }}
         >
-          Create Account
+          Create Account & Verify OTP
         </Button>
       </ScrollView>
-
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-      >
-        Account registered successfully! Redirecting to Sign In...
-      </Snackbar>
     </View>
   );
 };
+
 
 const styles = StyleSheet.create({
   container: {

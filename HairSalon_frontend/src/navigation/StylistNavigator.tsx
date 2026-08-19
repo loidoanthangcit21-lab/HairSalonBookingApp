@@ -11,10 +11,10 @@ import { ViewProfileScreen } from '../screens/auth/ViewProfileScreen';
 import { UpdateProfileScreen } from '../screens/auth/UpdateProfileScreen';
 import { ChangePasswordScreen } from '../screens/auth/ChangePasswordScreen';
 import { NotificationPanelScreen } from '../screens/auth/NotificationPanelScreen';
-import { SettingsScreen } from '../screens/auth/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
+
 
 const StylistTabs = () => {
   const theme = useTheme();
@@ -60,7 +60,7 @@ export const StylistNavigator = () => {
       <Stack.Screen name="UpdateProfile" component={UpdateProfileScreen} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
       <Stack.Screen name="NotificationPanel" component={NotificationPanelScreen} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
+
   );
 };

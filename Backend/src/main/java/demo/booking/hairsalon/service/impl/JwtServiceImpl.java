@@ -21,8 +21,6 @@ public class JwtServiceImpl implements JwtService {
 
     private final JwtProperties jwtProperties;
 
-
-
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.getSecret()));
     }
@@ -39,12 +37,12 @@ public class JwtServiceImpl implements JwtService {
 
     private String buildToken(User user, long expiration) {
         Date now = new Date();
-        Date expiry = new Date(
-                now.getTime() + expiration
-        );
+        Date expiry = new Date(now.getTime() + expiration);
+        String subject = user.getEmail() != null ? user.getEmail() : user.getPhone();
+        String roleStr = user.getRole() != null ? user.getRole().name() : "CUSTOMER";
         return Jwts.builder()
-                .subject(user.getEmail())
-                .claim("role", user.getRole().name())
+                .subject(subject)
+                .claim("role", roleStr)
                 .issuedAt(now)
                 .expiration(expiry)
                 .signWith(getSigningKey())
@@ -57,7 +55,6 @@ public class JwtServiceImpl implements JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
-
     }
 
     private <T> T extractClaim(String token, Function<Claims, T> resolver) {

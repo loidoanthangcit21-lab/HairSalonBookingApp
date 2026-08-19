@@ -28,10 +28,14 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        user.setFirstName(request.firstName());
-        user.setLastName(request.lastName());
-        user.setPhoneNumber(request.phoneNumber());
-        user.setAvatarUrl(request.avatarUrl());
+        if (request.firstName() != null || request.lastName() != null) {
+            String fName = request.firstName() != null ? request.firstName() : "";
+            String lName = request.lastName() != null ? request.lastName() : "";
+            user.setFullName((fName + " " + lName).trim());
+        }
+        if (request.phoneNumber() != null) {
+            user.setPhone(request.phoneNumber());
+        }
 
         User updatedUser = userRepository.save(user);
         return mapToResponse(updatedUser);
@@ -40,17 +44,17 @@ public class UserServiceImpl implements UserService {
     private UserProfileResponse mapToResponse(User user) {
         return new UserProfileResponse(
                 user.getId(),
-                user.getFirstName() + " " + user.getLastName(),
+                user.getFullName(),
                 user.getEmail(),
-                user.getPhoneNumber(),
-                null, // address
-                user.getRole().name(),
-                user.getAvatarUrl(),
-                null, // specialty
-                null, // experienceYears
-                null, // bio
-                null, // rating
-                null  // portfolioImages
+                user.getPhone(),
+                null,
+                user.getRole() != null ? user.getRole().name() : "CUSTOMER",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
         );
     }
 }

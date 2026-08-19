@@ -3,6 +3,7 @@ package demo.booking.hairsalon.service.impl;
 import demo.booking.hairsalon.service.EmailService;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -14,6 +15,7 @@ public class EmailServiceImpl implements EmailService {
         this.mailSender = mailSender;
     }
 
+    @Async
     @Override
     public void sendVerificationEmail(String to, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -31,6 +33,7 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
+    @Async
     @Override
     public void sendPasswordResetEmail(String to, String token) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -48,4 +51,4 @@ public class EmailServiceImpl implements EmailService {
         mailSender.send(message);
     }
 
-}
+}

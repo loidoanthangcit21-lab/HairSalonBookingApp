@@ -19,9 +19,10 @@ export const StaffCreatedBookingsScreen = ({ navigation }: any) => {
     queryFn: () => bookingService.getStaffCreatedBookings(),
   });
 
-  if (isLoading) {
+  if (isLoading && !staffBookings) {
     return <LoadingOverlay message="Loading staff created appointments..." />;
   }
+
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>

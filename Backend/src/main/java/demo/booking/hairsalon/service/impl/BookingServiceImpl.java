@@ -3,56 +3,60 @@ package demo.booking.hairsalon.service.impl;
 import demo.booking.hairsalon.exception.BusinessException;
 import demo.booking.hairsalon.model.dto.request.BookingRequest;
 import demo.booking.hairsalon.model.dto.response.BookingResponse;
-import demo.booking.hairsalon.model.dto.response.SalonServiceResponse;
+import demo.booking.hairsalon.model.dto.response.ServiceResponse;
 import demo.booking.hairsalon.model.entity.Booking;
-import demo.booking.hairsalon.model.entity.SalonService;
+import demo.booking.hairsalon.model.entity.Expert;
+import demo.booking.hairsalon.model.entity.Service;
 import demo.booking.hairsalon.model.entity.User;
 import demo.booking.hairsalon.model.enums.BookingStatus;
 import demo.booking.hairsalon.model.enums.ErrorCode;
-import demo.booking.hairsalon.model.enums.PaymentStatus;
 import demo.booking.hairsalon.repository.BookingRepository;
-import demo.booking.hairsalon.repository.BookingServiceRepository;
-import demo.booking.hairsalon.repository.SalonServiceRepository;
+import demo.booking.hairsalon.repository.ExpertRepository;
+import demo.booking.hairsalon.repository.ServiceRepository;
 import demo.booking.hairsalon.repository.UserRepository;
-
+import demo.booking.hairsalon.service.BookingService;
+import demo.booking.hairsalon.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Service
+@org.springframework.stereotype.Service
 @RequiredArgsConstructor
-public class BookingServiceImpl implements demo.booking.hairsalon.service.BookingService {
+public class BookingServiceImpl implements BookingService {
+
 
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
-    private final SalonServiceRepository salonServiceRepository;
-    private final BookingServiceRepository bookingServiceRepository;
-    private final demo.booking.hairsalon.service.NotificationService notificationService;
+    private final ServiceRepository serviceRepository;
+    private final ExpertRepository expertRepository;
+    private final NotificationService notificationService;
+
+    // ─────────────────────────────── Customer ────────────────────────────────
 
     @Override
     @Transactional
     public BookingResponse createBooking(String customerEmail, BookingRequest request) {
         User customer = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return processBookingCreation(customer, request, false);
+        return processBookingCreation(customer, request);
     }
 
     @Override
     public List<BookingResponse> getMyBookings(String customerEmail) {
         User customer = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        return bookingRepository.findByCustomerIdOrderByAppointmentDateDescStartTimeDesc(customer.getId())
-                .stream().map(this::mapToResponse).collect(Collectors.toList());
+        return bookingRepository.findByUserId(customer.getId())
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -65,80 +69,26 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     @Override
     @Transactional
     public BookingResponse updateBooking(String customerEmail, UUID bookingId, BookingRequest request) {
-        Booking booking = bookingRepository.findById(bookingId)
+        Booking oldBooking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
 
-        if (!booking.getCustomer().getEmail().equals(customerEmail)) {
+        if (oldBooking.getUser() != null && !oldBooking.getUser().getEmail().equals(customerEmail)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED_ACTION);
         }
 
-        if (booking.getStatus() != BookingStatus.PENDING) {
-            throw new BusinessException(ErrorCode.UNAUTHORIZED_ACTION);
+        // Cancel old booking then create a new one (reschedule)
+        oldBooking.setStatus(BookingStatus.CANCELLED);
+        oldBooking.setCancelledAt(LocalDateTime.now());
+        oldBooking.setCancelReason("Rescheduled");
+        bookingRepository.save(oldBooking);
+
+        User customer = oldBooking.getUser();
+        BookingResponse newBooking = processBookingCreation(customer, request);
+
+        if (customer != null) {
+            notificationService.sendBookingUpdate(customer, newBooking);
         }
-
-        User stylist = null;
-        if (request.stylistId() != null) {
-            stylist = userRepository.findById(request.stylistId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.STYLIST_NOT_FOUND));
-        }
-
-        int totalDuration = 0;
-        double totalAmount = 0.0;
-        List<SalonService> selectedServices = new ArrayList<>();
-
-        for (UUID serviceId : request.serviceIds()) {
-            SalonService service = salonServiceRepository.findById(serviceId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
-            selectedServices.add(service);
-            totalDuration += service.getDuration();
-            totalAmount += service.getPrice();
-        }
-
-        LocalDate parsedDate = LocalDate.parse(request.bookingDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-        LocalTime parsedTime = LocalTime.parse(request.timeSlot().toUpperCase(), DateTimeFormatter.ofPattern("hh:mm a", Locale.US));
-        LocalTime endTime = parsedTime.plusMinutes(totalDuration);
-
-        if (stylist != null) {
-            List<BookingStatus> activeStatuses = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-            long overlaps = bookingRepository.countOverlappingBookingsExcludeId(
-                    stylist.getId(),
-                    bookingId,
-                    parsedDate,
-                    parsedTime,
-                    endTime,
-                    activeStatuses
-            );
-            
-            if (overlaps > 0) {
-                throw new BusinessException(ErrorCode.STYLIST_NOT_AVAILABLE);
-            }
-        }
-
-        booking.setStylist(stylist);
-        booking.setAppointmentDate(parsedDate);
-        booking.setStartTime(parsedTime);
-        booking.setEndTime(endTime);
-        booking.setNotes(request.notes());
-        booking.setTotalAmount(totalAmount);
-        
-        if (request.customerName() != null) booking.setCustomerName(request.customerName());
-        if (request.customerPhone() != null) booking.setCustomerPhone(request.customerPhone());
-        if (request.creationType() != null) booking.setCreationType(request.creationType());
-
-        bookingServiceRepository.deleteByBookingId(bookingId);
-        
-        List<demo.booking.hairsalon.model.entity.BookingService> bookingServices = new ArrayList<>();
-        for (SalonService service : selectedServices) {
-            demo.booking.hairsalon.model.entity.BookingService bs = new demo.booking.hairsalon.model.entity.BookingService();
-            bs.setBooking(booking);
-            bs.setService(service);
-            bs.setPriceAtBooking(service.getPrice());
-            bookingServices.add(bs);
-        }
-        bookingServiceRepository.saveAll(bookingServices);
-
-        Booking savedBooking = bookingRepository.save(booking);
-        return mapToResponse(savedBooking);
+        return newBooking;
     }
 
     @Override
@@ -146,39 +96,53 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     public void cancelBooking(String customerEmail, UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
-        
-        if (!booking.getCustomer().getEmail().equals(customerEmail)) {
+
+        if (booking.getUser() != null && !booking.getUser().getEmail().equals(customerEmail)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED_ACTION);
         }
+
         booking.setStatus(BookingStatus.CANCELLED);
+        booking.setCancelledAt(LocalDateTime.now());
+        booking.setCancelReason("Cancelled by user");
         bookingRepository.save(booking);
 
-        // Notify Cashiers
-        List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
-        for (User cashier : cashiers) {
-            notificationService.sendNotification(cashier, "Booking Cancelled", "Booking " + booking.getBookingCode() + " has been cancelled.", "booking");
-        }
-        if (booking.getStylist() != null) {
-            notificationService.sendNotification(booking.getStylist(), "Booking Cancelled", "Booking " + booking.getBookingCode() + " has been cancelled.", "booking");
+        User customer = booking.getUser();
+        if (customer != null) {
+            BookingResponse response = mapToResponse(booking);
+            notificationService.sendBookingUpdate(customer, response);
+            notificationService.sendNotification(
+                    customer,
+                    "Booking Cancelled ❌",
+                    "Your appointment has been cancelled.",
+                    "BOOKING_CANCELLED"
+            );
         }
     }
 
+    // ─────────────────────────── Receptionist/Admin ──────────────────────────
+
     @Override
     public List<BookingResponse> getTodayBookings() {
-        return bookingRepository.findByAppointmentDateOrderByStartTimeAsc(LocalDate.now())
-                .stream().map(this::mapToResponse).collect(Collectors.toList());
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().atTime(23, 59, 59);
+        return bookingRepository.findTodayBookings(startOfDay, endOfDay)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<BookingResponse> getStaffCreatedBookings() {
-        return bookingRepository.findByCreatedByStaffTrueOrderByAppointmentDateDescStartTimeDesc()
-                .stream().map(this::mapToResponse).collect(Collectors.toList());
+        return bookingRepository.findAll()
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
     @Transactional
     public BookingResponse cashierCreateBooking(BookingRequest request) {
-        return processBookingCreation(null, request, true);
+        return processBookingCreation(null, request);
     }
 
     @Override
@@ -186,17 +150,22 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     public void markAsPaid(UUID bookingId) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
-        booking.setPaymentStatus(PaymentStatus.PAID);
+        booking.setStatus(BookingStatus.COMPLETED);
+        booking.setCompletedAt(LocalDateTime.now());
         bookingRepository.save(booking);
-    }
 
-    @Override
-    public List<BookingResponse> getStylistAssignedJobs(String stylistEmail) {
-        User stylist = userRepository.findByEmail(stylistEmail)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
-        List<BookingStatus> activeStatuses = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-        return bookingRepository.findByStylistIdAndStatusIn(stylist.getId(), activeStatuses)
-                .stream().map(this::mapToResponse).collect(Collectors.toList());
+        User customer = booking.getUser();
+        if (customer != null) {
+            BookingResponse response = mapToResponse(booking);
+            notificationService.sendBookingUpdate(customer, response);
+            notificationService.sendNotification(
+                    customer,
+                    "Payment Received 💳",
+                    "Payment received for your appointment #" +
+                            (booking.getId() != null ? booking.getId().toString().substring(0, 8) : ""),
+                    "BOOKING_COMPLETED"
+            );
+        }
     }
 
     @Override
@@ -204,150 +173,210 @@ public class BookingServiceImpl implements demo.booking.hairsalon.service.Bookin
     public void updateBookingStatus(UUID bookingId, BookingStatus newStatus) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
+
+        if (booking.getStatus() == newStatus) return;
+
         booking.setStatus(newStatus);
+        if (newStatus == BookingStatus.CHECK_IN) {
+            booking.setCheckedInAt(LocalDateTime.now());
+        } else if (newStatus == BookingStatus.COMPLETED) {
+            booking.setCompletedAt(LocalDateTime.now());
+        } else if (newStatus == BookingStatus.CANCELLED) {
+            booking.setCancelledAt(LocalDateTime.now());
+        }
         bookingRepository.save(booking);
 
-        if (newStatus == BookingStatus.CONFIRMED) {
-            if (booking.getCustomer() != null) {
-                notificationService.sendNotification(booking.getCustomer(), "Booking Confirmed", "Your booking " + booking.getBookingCode() + " is confirmed.", "booking");
+        User customer = booking.getUser();
+        if (customer != null) {
+            BookingResponse response = mapToResponse(booking);
+            notificationService.sendBookingUpdate(customer, response);
+
+            String title;
+            String message;
+            String type;
+            switch (newStatus) {
+                case CONFIRMED -> {
+                    title = "Appointment Confirmed 🎉";
+                    message = "Your appointment on " +
+                            (booking.getStartAt() != null ? booking.getStartAt().toLocalDate() : "") +
+                            " has been confirmed!";
+                    type = "BOOKING_CONFIRMED";
+                }
+                case CANCELLED -> {
+                    title = "Appointment Cancelled ❌";
+                    message = "Your appointment has been cancelled.";
+                    type = "BOOKING_CANCELLED";
+                }
+                case COMPLETED -> {
+                    title = "Appointment Completed ✨";
+                    message = "Thank you for visiting! Your session is completed.";
+                    type = "BOOKING_COMPLETED";
+                }
+                case CHECK_IN -> {
+                    title = "Checked In ✂️";
+                    message = "Welcome to the salon! You have checked in.";
+                    type = "BOOKING_CONFIRMED";
+                }
+                default -> {
+                    title = "Booking Status Updated 🔔";
+                    message = "Your appointment status has been updated to " + newStatus.name();
+                    type = "BOOKING_CONFIRMED";
+                }
             }
-            if (booking.getStylist() != null) {
-                notificationService.sendNotification(booking.getStylist(), "New Job", "You have a new confirmed booking " + booking.getBookingCode(), "booking");
-            }
-        } else if (newStatus == BookingStatus.COMPLETED) {
-            List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
-            for (User cashier : cashiers) {
-                notificationService.sendNotification(cashier, "Job Completed", "Booking " + booking.getBookingCode() + " is completed. Ready for payment.", "booking");
-            }
+            notificationService.sendNotification(customer, title, message, type);
         }
     }
 
-    private BookingResponse processBookingCreation(User customer, BookingRequest request, boolean isStaff) {
-        User stylist = null;
-        if (request.stylistId() != null) {
-            stylist = userRepository.findById(request.stylistId())
-                    .orElseThrow(() -> new BusinessException(ErrorCode.STYLIST_NOT_FOUND));
+    // ──────────────────────────────── Stylist ────────────────────────────────
+
+    @Override
+    public List<BookingResponse> getStylistAssignedJobs(String stylistEmail) {
+        User user = userRepository.findByEmail(stylistEmail).orElse(null);
+        if (user == null) {
+            return List.of();
+        }
+        return bookingRepository.findAll().stream()
+                .filter(b -> b.getExpert() != null &&
+                        (b.getExpert().getFullName().equalsIgnoreCase(user.getFullName()) ||
+                         (b.getExpert().getPhone() != null && b.getExpert().getPhone().equals(user.getPhone()))))
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+
+    // ────────────────────────────── Shared/Internal ──────────────────────────
+
+    @Override
+    public List<BookingResponse> getAllActiveBookings() {
+        return bookingRepository.findAll().stream()
+                .filter(b -> b.getStatus() == BookingStatus.PENDING
+                        || b.getStatus() == BookingStatus.CONFIRMED
+                        || b.getStatus() == BookingStatus.CHECK_IN)
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ────────────────────────── Private helpers ──────────────────────────────
+
+    private BookingResponse processBookingCreation(User customer, BookingRequest request) {
+        // 1. Resolve expert (with pessimistic write lock for race-condition safety)
+        Expert expert = null;
+        UUID expertId = request.expertId() != null ? request.expertId() : request.stylistId();
+        if (expertId != null) {
+            expert = expertRepository.findByIdWithLock(expertId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.EXPERT_NOT_FOUND));
+            if (!expert.isActive()) {
+                throw new BusinessException(ErrorCode.EXPERT_NOT_AVAILABLE);
+            }
         }
 
-        int totalDuration = 0;
-        double totalAmount = 0.0;
-        List<SalonService> selectedServices = new ArrayList<>();
-
-        for (UUID serviceId : request.serviceIds()) {
-            SalonService service = salonServiceRepository.findById(serviceId)
-                    .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
-            selectedServices.add(service);
-            totalDuration += service.getDuration();
-            totalAmount += service.getPrice();
+        // 2. Resolve service
+        if (request.serviceIds() == null || request.serviceIds().isEmpty()) {
+            throw new BusinessException(ErrorCode.SERVICE_NOT_FOUND);
         }
+        Service service = serviceRepository.findById(request.serviceIds().get(0))
+                .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
 
+        // 3. Parse date/time
         LocalDate parsedDate = LocalDate.parse(request.bookingDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         LocalTime parsedTime = LocalTime.parse(request.timeSlot().toUpperCase(), DateTimeFormatter.ofPattern("hh:mm a", Locale.US));
-        LocalTime endTime = parsedTime.plusMinutes(totalDuration);
+        LocalDateTime startAt = LocalDateTime.of(parsedDate, parsedTime);
+        LocalDateTime endAt = startAt.plusMinutes(45);
 
-        if (stylist != null) {
-            List<BookingStatus> activeStatuses = List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED);
-            long overlaps = bookingRepository.countOverlappingBookings(
-                    stylist.getId(),
-                    parsedDate,
-                    parsedTime,
-                    endTime,
-                    activeStatuses
+
+        // 4. Customer overlap check (same customer, same time window)
+        if (customer != null) {
+            List<Booking> customerOverlaps = bookingRepository.findCustomerOverlappingBookings(
+                    customer.getId(), startAt, endAt);
+            if (!customerOverlaps.isEmpty()) {
+                throw new BusinessException(ErrorCode.CUSTOMER_HAS_OVERLAPPING_BOOKING);
+            }
+        }
+
+        // 5. Expert overlap check (same expert, same time window)
+        if (expert != null) {
+            List<Booking> expertOverlaps = bookingRepository.findOverlappingBookings(
+                    expert.getId(), startAt, endAt);
+            if (!expertOverlaps.isEmpty()) {
+                throw new BusinessException(ErrorCode.EXPERT_NOT_AVAILABLE);
+            }
+        }
+
+        // 6. Build and persist
+        Booking booking = Booking.builder()
+                .user(customer)
+                .service(service)
+                .expert(expert)
+                .startAt(startAt)
+                .endAt(endAt)
+                .status(BookingStatus.PENDING)
+                .build();
+
+        Booking savedBooking;
+        try {
+            savedBooking = bookingRepository.saveAndFlush(booking);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            // DB unique constraint (uk_expert_start_at) caught race condition
+            throw new BusinessException(ErrorCode.EXPERT_NOT_AVAILABLE);
+        }
+
+        BookingResponse response = mapToResponse(savedBooking);
+
+        // 7. Send real-time events to customer
+        if (customer != null) {
+            String serviceName = service.getName();
+            String dateStr = request.bookingDate() + " at " + request.timeSlot();
+            notificationService.sendBookingUpdate(customer, response);
+            notificationService.sendNotification(
+                    customer,
+                    "Booking Placed Successfully 📅",
+                    "Your booking for " + serviceName + " on " + dateStr + " is currently PENDING.",
+                    "BOOKING_CONFIRMED"
             );
-            if (overlaps > 0) {
-                throw new BusinessException(ErrorCode.STYLIST_NOT_AVAILABLE);
-            }
         }
 
-        Booking booking = new Booking();
-        booking.setBookingCode("BK-" + (1000 + new Random().nextInt(9000)));
-        booking.setCustomer(customer);
-        booking.setStylist(stylist);
-        booking.setAppointmentDate(parsedDate);
-        booking.setStartTime(parsedTime);
-        booking.setEndTime(endTime);
-        booking.setStatus(BookingStatus.PENDING);
-        booking.setPaymentStatus(PaymentStatus.UNPAID);
-        booking.setNotes(request.notes());
-        booking.setTotalAmount(totalAmount);
-        
-        if (request.createdByStaff() != null) {
-            booking.setCreatedByStaff(request.createdByStaff());
-        } else {
-            booking.setCreatedByStaff(isStaff);
-        }
-        
-        String custName = request.customerName() != null ? request.customerName() : (customer != null ? customer.getFirstName() + " " + customer.getLastName() : "Walk-in Customer");
-        String custPhone = request.customerPhone() != null ? request.customerPhone() : (customer != null ? customer.getPhoneNumber() : "N/A");
-        
-        booking.setCustomerName(custName);
-        booking.setCustomerPhone(custPhone);
-        booking.setCreationType(request.creationType() != null ? request.creationType() : (isStaff ? "Walk-in" : "Online"));
-
-        Booking savedBooking = bookingRepository.save(booking);
-
-        List<demo.booking.hairsalon.model.entity.BookingService> bookingServices = new ArrayList<>();
-        for (SalonService service : selectedServices) {
-            demo.booking.hairsalon.model.entity.BookingService bs = new demo.booking.hairsalon.model.entity.BookingService();
-            bs.setBooking(savedBooking);
-            bs.setService(service);
-            bs.setPriceAtBooking(service.getPrice());
-            bookingServices.add(bs);
-        }
-        bookingServiceRepository.saveAll(bookingServices);
-
-        if (!isStaff) {
-            // Notify Cashiers of new online booking
-            List<User> cashiers = userRepository.findByRole(demo.booking.hairsalon.model.enums.Role.CASHIER);
-            for (User cashier : cashiers) {
-                notificationService.sendNotification(cashier, "New Booking Request", "New online booking received: " + savedBooking.getBookingCode(), "booking");
-            }
-        } else {
-            // Staff created, notify stylist and customer
-            if (stylist != null) {
-                notificationService.sendNotification(stylist, "New Job", "You have a new booking " + savedBooking.getBookingCode(), "booking");
-            }
-            if (customer != null) {
-                notificationService.sendNotification(customer, "Booking Created", "Your booking " + savedBooking.getBookingCode() + " has been created by our staff.", "booking");
-            }
-        }
-
-        return mapToResponse(savedBooking);
+        return response;
     }
 
     private BookingResponse mapToResponse(Booking booking) {
-        List<demo.booking.hairsalon.model.entity.BookingService> services = bookingServiceRepository.findByBookingId(booking.getId());
-        List<SalonServiceResponse> serviceResponses = services.stream().map(bs -> new SalonServiceResponse(
-                bs.getService().getId(),
-                bs.getService().getName(),
-                bs.getService().getDescription(),
-                bs.getPriceAtBooking(),
-                bs.getService().getDuration(),
-                bs.getService().getImageUrl(),
-                bs.getService().getCategory() != null ? bs.getService().getCategory().getId() : null,
-                bs.getService().getCategory() != null ? bs.getService().getCategory().getName() : null
-        )).collect(Collectors.toList());
+        Service service = booking.getService();
+        List<ServiceResponse> serviceResponses = service != null
+                ? List.of(new ServiceResponse(
+                        service.getId(),
+                        service.getName(),
+                        service.getDescription(),
+                        service.getPrice(),
+                        service.getImageUrl(),
+                        service.getCategory() != null ? service.getCategory().getId() : null,
+                        service.getCategory() != null ? service.getCategory().getName() : null))
+                : List.of();
 
-        String timeStr = booking.getStartTime() != null ? booking.getStartTime().format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US)) : null;
-        String dateStr = booking.getAppointmentDate() != null ? booking.getAppointmentDate().toString() : null;
-        String createdStr = booking.getCreatedAt() != null ? booking.getCreatedAt().toString() : null;
+        String timeStr = booking.getStartAt() != null
+                ? booking.getStartAt().format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US))
+                : null;
+        String dateStr = booking.getStartAt() != null
+                ? booking.getStartAt().toLocalDate().toString()
+                : null;
+        String createdStr = booking.getCreatedAt() != null
+                ? booking.getCreatedAt().toString()
+                : null;
 
         return new BookingResponse(
                 booking.getId(),
-                booking.getBookingCode(),
-                booking.getCustomer() != null ? booking.getCustomer().getId() : null,
-                booking.getCustomerName() != null ? booking.getCustomerName() : (booking.getCustomer() != null ? booking.getCustomer().getFirstName() + " " + booking.getCustomer().getLastName() : null),
-                booking.getCustomerPhone() != null ? booking.getCustomerPhone() : (booking.getCustomer() != null ? booking.getCustomer().getPhoneNumber() : null),
-                booking.getStylist() != null ? booking.getStylist().getId() : null,
-                booking.getStylist() != null ? booking.getStylist().getFirstName() + " " + booking.getStylist().getLastName() : null,
+                "BK-" + (booking.getId() != null ? booking.getId().toString().substring(0, 8) : "0000"),
+                booking.getUser() != null ? booking.getUser().getId() : null,
+                booking.getUser() != null ? booking.getUser().getFullName() : null,
+                booking.getUser() != null ? booking.getUser().getPhone() : null,
+                booking.getExpert() != null ? booking.getExpert().getId() : null,
+                booking.getExpert() != null ? booking.getExpert().getFullName() : null,
                 dateStr,
                 timeStr,
                 booking.getStatus() != null ? booking.getStatus().name() : null,
-                booking.getPaymentStatus() != null ? booking.getPaymentStatus().name() : null,
-                booking.getTotalAmount(),
-                booking.getNotes(),
-                booking.getCreatedByStaff(),
-                booking.getCreationType(),
+                "UNPAID",          // paymentStatus – always UNPAID until markAsPaid
+                service != null ? service.getPrice().doubleValue() : 0.0,
+                booking.getCancelReason(),
+                false,             // createdByStaff field not stored in entity yet
+                "Online",          // creationType field not stored in entity yet
                 createdStr,
                 serviceResponses
         );
