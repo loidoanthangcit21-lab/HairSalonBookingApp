@@ -373,7 +373,7 @@ public class DataInitializer implements CommandLineRunner {
 
                 Booking booking = Booking.builder()
                         .user(user)
-                        .service(service)
+                        .services(java.util.List.of(service))
                         .expert(expert)
                         .startAt(start)
                         .endAt(end)

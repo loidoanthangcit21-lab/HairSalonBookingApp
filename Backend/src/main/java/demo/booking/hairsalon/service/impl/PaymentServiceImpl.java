@@ -66,7 +66,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         Booking booking = invoice.getBooking();
         String customerName = booking.getUser() != null ? booking.getUser().getFullName() : "Walk-in Customer";
-        String serviceName = booking.getService() != null ? booking.getService().getName() : "N/A";
+        String serviceName = booking.getServices() != null && !booking.getServices().isEmpty() ? 
+                booking.getServices().stream().map(demo.booking.hairsalon.model.entity.Service::getName).collect(java.util.stream.Collectors.joining(", ")) 
+                : "N/A";
         String expertName = booking.getExpert() != null ? booking.getExpert().getFullName() : "Unassigned";
 
         String startStr = booking.getStartAt() != null ? booking.getStartAt().format(DateTimeFormatter.ofPattern("HH:mm dd/MM/yyyy")) : "";
@@ -138,7 +140,9 @@ public class PaymentServiceImpl implements PaymentService {
 
         Invoice invoice = Invoice.builder()
                 .booking(booking)
-                .totalAmount(booking.getService() != null ? booking.getService().getPrice() : java.math.BigDecimal.ZERO)
+                .totalAmount(booking.getServices() != null ? booking.getServices().stream()
+                        .map(s -> s.getPrice() != null ? s.getPrice() : java.math.BigDecimal.ZERO)
+                        .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add) : java.math.BigDecimal.ZERO)
                 .build();
 
         return invoiceRepository.save(invoice);

@@ -21,7 +21,6 @@ import java.util.UUID;
 
         @Index(name = "idx_bookings_user_id", columnList = "user_id"),
         @Index(name = "idx_bookings_expert_id", columnList = "expert_id"),
-        @Index(name = "idx_bookings_service_id", columnList = "service_id"),
         @Index(name = "idx_bookings_start_at", columnList = "start_at"),
         @Index(name = "idx_bookings_end_at", columnList = "end_at"),
         @Index(name = "idx_bookings_status", columnList = "status")
@@ -38,9 +37,14 @@ public class Booking {
     private User user;
 
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "service_id", nullable = false)
-    private Service service;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "booking_services",
+        joinColumns = @JoinColumn(name = "booking_id"),
+        inverseJoinColumns = @JoinColumn(name = "service_id")
+    )
+    @Builder.Default
+    private java.util.List<Service> services = new java.util.ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "expert_id")

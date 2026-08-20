@@ -51,7 +51,7 @@ public class BookingReminderScheduler {
                     String dateStr = booking.getStartAt() != null
                             ? booking.getStartAt().toLocalDate().toString()
                             : "";
-                    String serviceName = booking.getService() != null ? booking.getService().getName() : "Haircut";
+                    String serviceName = booking.getServices() != null && !booking.getServices().isEmpty() ? booking.getServices().get(0).getName() + (booking.getServices().size() > 1 ? " and " + (booking.getServices().size() - 1) + " other(s)" : "") : "Haircut";
                     String expertName = booking.getExpert() != null ? booking.getExpert().getFullName() : "your stylist";
 
                     String title = "Upcoming Appointment Reminder ⏰";

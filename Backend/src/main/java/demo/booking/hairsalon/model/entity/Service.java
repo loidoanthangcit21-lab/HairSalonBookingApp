@@ -43,6 +43,10 @@ public class Service {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    @Column(name = "duration_minutes")
+    @Builder.Default
+    private Integer durationMinutes = 45;
+
     @Builder.Default
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;

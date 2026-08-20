@@ -15,7 +15,10 @@ import java.util.UUID;
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
     List<Booking> findByUserId(UUID userId);
     List<Booking> findByExpertId(UUID expertId);
-    List<Booking> findByServiceId(UUID serviceId);
+    List<Booking> findByServicesId(UUID serviceId);
+
+    @Query("SELECT b FROM Booking b WHERE LOWER(b.expert.fullName) = LOWER(:fullName) OR b.expert.phone = :phone")
+    List<Booking> findByExpertNameOrPhone(@Param("fullName") String fullName, @Param("phone") String phone);
     List<Booking> findByStatus(BookingStatus status);
 
     @Query("SELECT b FROM Booking b WHERE b.expert.id = :expertId " +

@@ -228,10 +228,7 @@ public class BookingServiceImpl implements BookingService {
         if (user == null) {
             return List.of();
         }
-        return bookingRepository.findAll().stream()
-                .filter(b -> b.getExpert() != null &&
-                        (b.getExpert().getFullName().equalsIgnoreCase(user.getFullName()) ||
-                         (b.getExpert().getPhone() != null && b.getExpert().getPhone().equals(user.getPhone()))))
+        return bookingRepository.findByExpertNameOrPhone(user.getFullName(), user.getPhone()).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -263,12 +260,14 @@ public class BookingServiceImpl implements BookingService {
             }
         }
 
-        //Resolve service
+        //Resolve services
         if (request.serviceIds() == null || request.serviceIds().isEmpty()) {
             throw new BusinessException(ErrorCode.SERVICE_NOT_FOUND);
         }
-        Service service = serviceRepository.findById(request.serviceIds().get(0))
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_NOT_FOUND));
+        List<Service> services = serviceRepository.findAllById(request.serviceIds());
+        if (services.isEmpty()) {
+            throw new BusinessException(ErrorCode.SERVICE_NOT_FOUND);
+        }
 
         //Parse date/time
         LocalDate parsedDate = LocalDate.parse(request.bookingDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
@@ -277,7 +276,10 @@ public class BookingServiceImpl implements BookingService {
         if (startAt.isBefore(LocalDateTime.now())) {
             throw new BusinessException(ErrorCode.INVALID_BOOKING_TIME);
         }
-        LocalDateTime endAt = startAt.plusMinutes(45);
+        
+        int totalDuration = services.stream().mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 45).sum();
+        if (totalDuration == 0) totalDuration = 45; // Default fallback if missing duration
+        LocalDateTime endAt = startAt.plusMinutes(totalDuration);
 
 
         //Customer overlap check (same customer, same time window)
@@ -300,7 +302,7 @@ public class BookingServiceImpl implements BookingService {
 
         Booking booking = Booking.builder()
                 .user(customer)
-                .service(service)
+                .services(services)
                 .expert(expert)
                 .startAt(startAt)
                 .endAt(endAt)
@@ -319,7 +321,7 @@ public class BookingServiceImpl implements BookingService {
 
         //Send real-time events to customer
         if (customer != null) {
-            String serviceName = service.getName();
+            String serviceName = services.isEmpty() ? "N/A" : services.get(0).getName() + (services.size() > 1 ? " and " + (services.size() - 1) + " other(s)" : "");
             String dateStr = request.bookingDate() + " at " + request.timeSlot();
             notificationService.sendBookingUpdate(customer, response);
             notificationService.sendNotification(
@@ -334,17 +336,17 @@ public class BookingServiceImpl implements BookingService {
     }
 
     private BookingResponse mapToResponse(Booking booking) {
-        Service service = booking.getService();
-        List<ServiceResponse> serviceResponses = service != null
-                ? List.of(new ServiceResponse(
-                        service.getId(),
-                        service.getName(),
-                        service.getDescription(),
-                        service.getPrice(),
-                        service.getImageUrl(),
-                        service.getCategory() != null ? service.getCategory().getId() : null,
-                        service.getCategory() != null ? service.getCategory().getName() : null))
-                : List.of();
+        List<Service> services = booking.getServices();
+        List<ServiceResponse> serviceResponses = services != null ? services.stream()
+                .map(s -> new ServiceResponse(
+                        s.getId(),
+                        s.getName(),
+                        s.getDescription(),
+                        s.getPrice(),
+                        s.getImageUrl(),
+                        s.getCategory() != null ? s.getCategory().getId() : null,
+                        s.getCategory() != null ? s.getCategory().getName() : null))
+                .collect(Collectors.toList()) : List.of();
 
         String timeStr = booking.getStartAt() != null
                 ? booking.getStartAt().format(DateTimeFormatter.ofPattern("hh:mm a", Locale.US))
@@ -368,7 +370,7 @@ public class BookingServiceImpl implements BookingService {
                 timeStr,
                 booking.getStatus() != null ? booking.getStatus().name() : null,
                 booking.getStatus() == BookingStatus.COMPLETED ? "PAID" : "UNPAID",
-                service != null ? service.getPrice().doubleValue() : 0.0,
+                services != null ? services.stream().mapToDouble(s -> s.getPrice() != null ? s.getPrice().doubleValue() : 0.0).sum() : 0.0,
                 booking.getCancelReason(),
                 false,
                 "Online",
