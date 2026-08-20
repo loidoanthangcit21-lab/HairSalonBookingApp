@@ -145,28 +145,6 @@ public class BookingServiceImpl implements BookingService {
         return processBookingCreation(null, request);
     }
 
-    @Override
-    @Transactional
-    public void markAsPaid(UUID bookingId) {
-        Booking booking = bookingRepository.findById(bookingId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
-        booking.setStatus(BookingStatus.COMPLETED);
-        booking.setCompletedAt(LocalDateTime.now());
-        bookingRepository.save(booking);
-
-        User customer = booking.getUser();
-        if (customer != null) {
-            BookingResponse response = mapToResponse(booking);
-            notificationService.sendBookingUpdate(customer, response);
-            notificationService.sendNotification(
-                    customer,
-                    "Payment Received",
-                    "Payment received for your appointment #" +
-                            (booking.getId() != null ? booking.getId().toString().substring(0, 8) : ""),
-                    "BOOKING_COMPLETED"
-            );
-        }
-    }
 
     @Override
     @Transactional
@@ -176,14 +154,29 @@ public class BookingServiceImpl implements BookingService {
 
         if (booking.getStatus() == newStatus) return;
 
-        booking.setStatus(newStatus);
+        // State Machine validation
+        if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
+            throw new BusinessException(ErrorCode.INVALID_BOOKING_STATE);
+        }
+
         if (newStatus == BookingStatus.CHECK_IN) {
-            booking.setCheckedInAt(LocalDateTime.now());
+            if (booking.getStatus() != BookingStatus.PENDING && booking.getStatus() != BookingStatus.CONFIRMED) {
+                throw new BusinessException(ErrorCode.INVALID_BOOKING_STATE);
+            }
+            LocalDateTime now = LocalDateTime.now();
+            // Admin can check-in anytime, no strict time validation needed.
+            booking.setCheckedInAt(now);
         } else if (newStatus == BookingStatus.COMPLETED) {
-            booking.setCompletedAt(LocalDateTime.now());
+            LocalDateTime now = LocalDateTime.now();
+            booking.setCompletedAt(now);
+            if (now.isBefore(booking.getEndAt())) {
+                booking.setEndAt(now);
+            }
         } else if (newStatus == BookingStatus.CANCELLED) {
             booking.setCancelledAt(LocalDateTime.now());
         }
+        
+        booking.setStatus(newStatus);
         bookingRepository.save(booking);
 
         User customer = booking.getUser();
@@ -281,6 +274,9 @@ public class BookingServiceImpl implements BookingService {
         LocalDate parsedDate = LocalDate.parse(request.bookingDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         LocalTime parsedTime = LocalTime.parse(request.timeSlot().toUpperCase(), DateTimeFormatter.ofPattern("hh:mm a", Locale.US));
         LocalDateTime startAt = LocalDateTime.of(parsedDate, parsedTime);
+        if (startAt.isBefore(LocalDateTime.now())) {
+            throw new BusinessException(ErrorCode.INVALID_BOOKING_TIME);
+        }
         LocalDateTime endAt = startAt.plusMinutes(45);
 
 
@@ -371,7 +367,7 @@ public class BookingServiceImpl implements BookingService {
                 dateStr,
                 timeStr,
                 booking.getStatus() != null ? booking.getStatus().name() : null,
-                "UNPAID",
+                booking.getStatus() == BookingStatus.COMPLETED ? "PAID" : "UNPAID",
                 service != null ? service.getPrice().doubleValue() : 0.0,
                 booking.getCancelReason(),
                 false,

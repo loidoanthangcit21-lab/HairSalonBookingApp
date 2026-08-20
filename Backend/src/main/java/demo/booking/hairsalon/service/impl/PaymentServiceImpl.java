@@ -102,11 +102,11 @@ public class PaymentServiceImpl implements PaymentService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKING_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime createdAt = invoice.getCreatedAt() != null ? invoice.getCreatedAt() : now;
-        LocalDateTime expiresAt = createdAt.plusMinutes(qrExpirationMinutes);
-
-        if (request.paymentMethod() == demo.booking.hairsalon.model.enums.PaymentMethod.QR && now.isAfter(expiresAt)) {
-            throw new BusinessException(ErrorCode.QR_CODE_EXPIRED);
+        // Note: We do not enforce QR expiration here because if the admin confirms it, 
+        // the money has already arrived in the bank regardless of the QR timestamp.
+        
+        if (request.amount().compareTo(invoice.getTotalAmount()) < 0) {
+            throw new BusinessException(ErrorCode.INVALID_PAYMENT_AMOUNT);
         }
 
         Payment payment = Payment.builder()
@@ -123,6 +123,12 @@ public class PaymentServiceImpl implements PaymentService {
         Booking booking = invoice.getBooking();
         booking.setStatus(BookingStatus.COMPLETED);
         booking.setCompletedAt(now);
+        
+        // Free up the time slot if completed earlier than expected
+        if (now.isBefore(booking.getEndAt())) {
+            booking.setEndAt(now);
+        }
+        
         bookingRepository.save(booking);
     }
 

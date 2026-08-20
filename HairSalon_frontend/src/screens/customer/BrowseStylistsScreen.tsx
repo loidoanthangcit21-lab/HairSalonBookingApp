@@ -79,7 +79,11 @@ export const BrowseStylistsScreen = ({ navigation, route }: any) => {
       route.params.onSelectStylist(selectedId);
     }
     if (returnScreen) {
-      navigation.navigate(returnScreen, { selectedStylistId: selectedId });
+      navigation.navigate({
+        name: returnScreen,
+        params: { selectedStylistId: selectedId },
+        merge: true,
+      });
     } else {
       navigation.goBack();
     }

@@ -75,12 +75,6 @@ public class BookingController {
         return ApiResponse.success(null, "Customer checked-in successfully", null);
     }
 
-    @PostMapping("/{id}/process-payment")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> markBookingAsPaid(@PathVariable UUID id) {
-        bookingService.markAsPaid(id);
-        return ApiResponse.success(null, "Booking marked as paid successfully", null);
-    }
 
     @GetMapping("/today")
     @PreAuthorize("hasRole('ADMIN')")

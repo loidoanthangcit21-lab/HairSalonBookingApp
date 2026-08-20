@@ -20,7 +20,7 @@ public interface BookingService {
     List<BookingResponse> getTodayBookings();
     List<BookingResponse> getStaffCreatedBookings();
     BookingResponse cashierCreateBooking(BookingRequest request);
-    void markAsPaid(UUID bookingId);
+
 
     // Stylist (Or Receptionist)
     List<BookingResponse> getStylistAssignedJobs(String stylistEmail);

@@ -71,7 +71,11 @@ export const BrowseServicesScreen = ({ navigation, route }: any) => {
       route.params.onSelectServices(selectedIds);
     }
     if (returnScreen) {
-      navigation.navigate(returnScreen, { selectedServiceIds: selectedIds });
+      navigation.navigate({
+        name: returnScreen,
+        params: { selectedServiceIds: selectedIds },
+        merge: true,
+      });
     } else {
       navigation.goBack();
     }

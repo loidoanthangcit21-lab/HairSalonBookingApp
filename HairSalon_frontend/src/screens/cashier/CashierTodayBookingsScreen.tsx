@@ -161,7 +161,7 @@ export const CashierTodayBookingsScreen = ({ navigation }: any) => {
                     onPress={() =>
                       statusMutation.mutate({
                         id: item.id,
-                        status: BookingStatus.COMPLETED,
+                        status: BookingStatus.CHECK_IN,
                       })
                     }
                   >
@@ -169,14 +169,16 @@ export const CashierTodayBookingsScreen = ({ navigation }: any) => {
                   </Button>
                 )}
 
-                <Button
-                  compact
-                  mode="outlined"
-                  icon="cash-register"
-                  onPress={() => navigation.navigate('ProcessPayment', { booking: item })}
-                >
-                  Checkout
-                </Button>
+                {item.status === BookingStatus.CHECK_IN &&(
+                  <Button
+                    compact
+                    mode="outlined"
+                    icon="cash-register"
+                    onPress={() => navigation.navigate('ProcessPayment', { booking: item })}
+                  >
+                    Checkout
+                  </Button>
+                )}
               </Card.Actions>
             </Card>
           );

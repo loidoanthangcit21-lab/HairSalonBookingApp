@@ -28,6 +28,8 @@ public enum ErrorCode {
     CUSTOMER_HAS_OVERLAPPING_BOOKING(HttpStatus.BAD_REQUEST, "You already have an appointment scheduled at this time slot"),
     NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Notification not found"),
     QR_CODE_EXPIRED(HttpStatus.BAD_REQUEST, "QR payment code has expired. Please refresh the QR code."),
+    INVALID_BOOKING_STATE(HttpStatus.BAD_REQUEST, "Invalid booking status transition"),
+    INVALID_PAYMENT_AMOUNT(HttpStatus.BAD_REQUEST, "Payment amount does not match invoice total"),
     UNAUTHORIZED_ACTION(HttpStatus.FORBIDDEN, "You do not have permission to perform this action");
 
     private final HttpStatus status;
